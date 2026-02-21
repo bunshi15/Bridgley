@@ -44,6 +44,18 @@ _Working towards v1.0.0 — production stabilization._
 - **Crew message used UUID fragment as job ID** — replaced with sequential
   `lead_number` from DB (`#42` instead of `#0952ef82`)
 - **Crew message had useless header** — removed `📣 FOR CREW (Copy to group)`
+- **(EPIC D1) Item quantity inflated by attribute numbers** — `extract_items()`
+  treated any digit in the fragment as quantity (e.g. "5-дверный шкаф" → qty=5,
+  "холодильник 200кг" → qty=200). Now uses explicit quantity markers only
+  (`x5`, `5шт`, `qty:5`, etc.) with attribute suppression (`двер`, `кг`, `см`)
+  and a sanity cap (bare number > 20 → qty=1)
+- **(EPIC D3) Crew message missing multi-pickup route** — crew view only showed
+  first pickup floor; now renders all pickup points with per-point floors and
+  elevator info, plus localized labels (Забор/Pickup/איסוף)
+- **(EPIC B1.5) Dispatch code not isolated** — `format_crew_message()` and
+  `notify_operator_crew_fallback()` still lived inline in `notification_service.py`;
+  moved canonical implementations to `app/core/dispatch/` package with
+  backward-compatible re-exports
 
 ---
 

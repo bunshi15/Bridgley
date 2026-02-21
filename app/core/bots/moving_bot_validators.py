@@ -585,8 +585,50 @@ _ITEM_SEPARATORS = re.compile(
     re.IGNORECASE,
 )
 
-# Quantity pattern: digits adjacent to text, e.g. "5 коробок" or "boxes 3"
-_QTY_PATTERN = re.compile(r"(\d+)")
+# ---------------------------------------------------------------------------
+# Quantity detection (EPIC D1 — attribute-safe)
+# ---------------------------------------------------------------------------
+#
+# Quantity is recognised ONLY via explicit markers:
+#   x5 / 5x / 5 шт / 5 штук / 5 pcs / 5 pieces / qty:5 / qty=5
+# All other digits in the remainder are treated as attributes
+# (e.g. "5 дверный", "200кг", "615л") and must NOT affect qty.
+#
+# Sanity cap: parsed qty > 20 without an explicit marker → 1.
+# ---------------------------------------------------------------------------
+
+# Explicit quantity markers (order matters: longest first isn't needed here,
+# but we anchor each alternative carefully).
+_EXPLICIT_QTY_PATTERN = re.compile(
+    r"(?:"
+    r"(\d+)\s*[xх×]"           # "5x", "5х", "5×"  (number before x)
+    r"|[xх×]\s*(\d+)"          # "x5", "х5", "×5"  (x before number)
+    r"|(\d+)\s*(?:шт\.?|штук)" # "5 шт", "5шт.", "5 штук"
+    r"|(\d+)\s*(?:pcs|pieces)" # "5 pcs", "5 pieces"
+    r"|qty\s*[:=]\s*(\d+)"     # "qty:5", "qty=5"
+    r")",
+    re.IGNORECASE,
+)
+
+# Attribute-like patterns that suppress bare-number qty detection.
+# If the remainder contains a number adjacent to any of these suffixes,
+# the number is an attribute (doors, weight, volume, dimensions), not qty.
+_ATTR_SUFFIXES = re.compile(
+    r"\d+[\s\-]*(?:"
+    r"двер|door"              # doors: "5-дверный", "5 door", "5дверный"
+    r"|кг|kg"                 # weight
+    r"|г\b|g\b"               # grams (word boundary to avoid false hits)
+    r"|л\b|l\b|литр|liter"    # liters
+    r"|см|cm|мм|mm|м\b|m\b"  # dimensions (cm, mm, m)
+    r")",
+    re.IGNORECASE,
+)
+
+# Bare number fallback (used only when no explicit marker and no attributes)
+_BARE_QTY_PATTERN = re.compile(r"(\d+)")
+
+# Max reasonable qty without an explicit marker (sanity cap)
+_QTY_SANITY_CAP = 20
 
 # Unit words between quantity and item: "5 шт коробок", "5шт. коробок", "5 штук коробок"
 _UNIT_STRIP = re.compile(r"(\d+)\s*(?:шт\.?|штук)\s*", re.IGNORECASE)
@@ -642,11 +684,24 @@ def extract_items(
 
         # Extract quantity from the remainder (text left after removing alias)
         qty = 1
-        qty_match = _QTY_PATTERN.search(remainder) if remainder else None
-        if qty_match:
-            parsed_qty = int(qty_match.group(1))
-            if parsed_qty > 0:
-                qty = parsed_qty
+        if remainder:
+            # 1) Try explicit markers first (x5, 5шт, qty:5, etc.)
+            explicit_match = _EXPLICIT_QTY_PATTERN.search(remainder)
+            if explicit_match:
+                # Groups are mutually exclusive; pick the one that matched
+                raw = next(g for g in explicit_match.groups() if g is not None)
+                parsed_qty = int(raw)
+                if parsed_qty > 0:
+                    qty = parsed_qty
+            else:
+                # 2) Check for attribute-like numbers → suppress qty
+                if not _ATTR_SUFFIXES.search(remainder):
+                    # 3) Bare number fallback with sanity cap
+                    bare_match = _BARE_QTY_PATTERN.search(remainder)
+                    if bare_match:
+                        parsed_qty = int(bare_match.group(1))
+                        if 0 < parsed_qty <= _QTY_SANITY_CAP:
+                            qty = parsed_qty
 
         # Accumulate
         found[matched_key] = found.get(matched_key, 0) + qty

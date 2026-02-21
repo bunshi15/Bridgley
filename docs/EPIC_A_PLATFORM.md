@@ -147,3 +147,46 @@ All job types must have clear ownership (Core vs Dispatch).
 * Rollback to v1 possible in < 1 minute
 
 ---
+All EPIC A + B1.5 work is complete. Here's the summary:
+
+---
+
+## EPIC A (Platform Isolation) + B1.5 (Dispatch Isolation) — Complete ✅
+
+**1006 tests pass, 0 failures.**
+
+### What was done:
+
+**EPIC A1 — Engine Modularization:**
+- Created `app/core/handlers/registry.py` with `register_handlers()` + `parse_enabled_bots()`
+- `ENABLED_BOTS` env var (default: `moving_bot_v1`) — only listed bots are lazily imported
+- Removed static registration side-effect from `handlers/__init__.py`
+- Updated `http_app.py` startup to use `register_handlers(parse_enabled_bots())`
+- Updated `tests/conftest.py` to use the new registry
+
+**EPIC A2 — Worker Role Separation:**
+- `WORKER_ROLE` env var (`core` | `dispatch` | `all`, default: `all`)
+- Core handlers: `outbound_reply`, `process_media`, `notify_operator`
+- Dispatch handlers: `notify_crew_fallback`
+- Added `JobWorker.list_handlers()` for diagnostics
+
+**EPIC A3 — Deployment Profiles:**
+- Updated docker-compose prod: core `worker` now runs with `WORKER_ROLE=core`
+- Added commented `dispatch-worker` service (ready to uncomment when needed)
+- Added `ENABLED_BOTS` and `WORKER_ROLE` to common env block
+- Added both settings to `.env.production.example`
+
+**EPIC B1.5 — Dispatch Isolation:**
+- Created `app/core/dispatch/` package with clean module boundaries
+  - `crew_view.py` — `format_crew_message()` + localized labels (RU/EN/HE)
+  - `services.py` — `notify_operator_crew_fallback()`
+  - `jobs.py` — `handle_notify_crew_fallback()` job handler
+- Removed old duplicates from `notification_service.py` and `job_worker.py`
+- Updated `http_app.py` to import dispatch handler from `app.core.dispatch.jobs`
+- Backward-compatible re-exports preserved in `notification_service.py`
+- **Dispatch code does NOT import bot handler modules** — clean isolation boundary
+
+**Cleanup:**
+- Updated CHANGELOG with all EPIC A + B1.5 entries
+- Removed dead code (old function definitions replaced by re-exports)
+- All import chains verified clean

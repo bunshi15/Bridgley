@@ -3402,6 +3402,153 @@ class TestWardrobeSizing:
         assert result[0]["key"] == "wardrobe_large"
 
 
+class TestExtractItemsAttributeSafe:
+    """EPIC D1: Attribute-like numbers must NOT be treated as quantity."""
+
+    # --- Attribute suppression: doors, weight, volume, dimensions ---
+
+    def test_5_door_wardrobe_qty_1(self):
+        """'5 дверный шкаф' — 5 is doors, not qty."""
+        result = extract_items("5 дверный шкаф")
+        assert len(result) == 1
+        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["qty"] == 1
+
+    def test_5_hyphen_door_wardrobe_qty_1(self):
+        """'5-дверный шкаф' — hyphenated attribute."""
+        result = extract_items("5-дверный шкаф")
+        assert len(result) == 1
+        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["qty"] == 1
+
+    def test_fridge_200kg_615l_qty_1(self):
+        """'холодильник 200кг 615л' — weight+volume attributes, qty=1."""
+        result = extract_items("холодильник 200кг 615л")
+        assert len(result) == 1
+        assert result[0]["key"] == "refrigerator"
+        assert result[0]["qty"] == 1
+
+    def test_fridge_200kg_qty_1(self):
+        """'холодильник 200кг' — weight attribute only."""
+        result = extract_items("холодильник 200кг")
+        assert len(result) == 1
+        assert result[0]["key"] == "refrigerator"
+        assert result[0]["qty"] == 1
+
+    def test_wardrobe_180cm_qty_1(self):
+        """'шкаф 180см' — dimension attribute."""
+        result = extract_items("шкаф 180см")
+        assert len(result) == 1
+        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["qty"] == 1
+
+    def test_table_120cm_qty_1(self):
+        """'стол 120cm' — English dimension suffix."""
+        result = extract_items("стол 120cm")
+        assert len(result) == 1
+        assert result[0]["key"] == "dining_table"
+        assert result[0]["qty"] == 1
+
+    def test_wardrobe_2m_qty_1(self):
+        """'шкаф 2м' — meter dimension."""
+        result = extract_items("шкаф 2м")
+        assert len(result) == 1
+        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["qty"] == 1
+
+    # --- Explicit markers: must still work ---
+
+    def test_explicit_x5(self):
+        """'шкаф x5' → qty=5."""
+        result = extract_items("шкаф x5")
+        assert len(result) == 1
+        assert result[0]["qty"] == 5
+
+    def test_explicit_5x(self):
+        """'коробки 3x' → qty=3."""
+        result = extract_items("коробки 3x")
+        assert len(result) == 1
+        assert result[0]["qty"] == 3
+
+    def test_explicit_cyrillic_x(self):
+        """'шкаф х5' — Cyrillic х should work like Latin x."""
+        result = extract_items("шкаф х5")
+        assert len(result) == 1
+        assert result[0]["qty"] == 5
+
+    def test_explicit_sht(self):
+        """'шкаф 5шт' → qty=5."""
+        result = extract_items("шкаф 5шт")
+        assert len(result) == 1
+        assert result[0]["qty"] == 5
+
+    def test_explicit_shtuk(self):
+        """'шкаф 5 штук' → qty=5."""
+        result = extract_items("шкаф 5 штук")
+        assert len(result) == 1
+        assert result[0]["qty"] == 5
+
+    def test_explicit_pcs(self):
+        """'boxes 5 pcs' → qty=5."""
+        result = extract_items("boxes 5 pcs")
+        assert len(result) == 1
+        assert result[0]["qty"] == 5
+
+    def test_explicit_qty_colon(self):
+        """'box qty:3' → qty=3."""
+        result = extract_items("box qty:3")
+        assert len(result) == 1
+        assert result[0]["qty"] == 3
+
+    def test_explicit_qty_equals(self):
+        """'box qty=4' → qty=4."""
+        result = extract_items("box qty=4")
+        assert len(result) == 1
+        assert result[0]["qty"] == 4
+
+    # --- Bare numbers: small values still work, large values capped ---
+
+    def test_bare_small_number(self):
+        """'5 коробок' — bare number ≤20 → qty=5."""
+        result = extract_items("5 коробок")
+        assert len(result) == 1
+        assert result[0]["qty"] == 5
+
+    def test_bare_number_sanity_cap(self):
+        """'200 коробок' — bare number >20 → qty=1 (sanity cap)."""
+        result = extract_items("200 коробок")
+        assert len(result) == 1
+        assert result[0]["qty"] == 1
+
+    def test_bare_20_is_accepted(self):
+        """'20 коробок' — boundary: 20 is within cap."""
+        result = extract_items("20 коробок")
+        assert len(result) == 1
+        assert result[0]["qty"] == 20
+
+    def test_bare_21_is_capped(self):
+        """'21 коробок' — boundary: 21 exceeds cap."""
+        result = extract_items("21 коробок")
+        assert len(result) == 1
+        assert result[0]["qty"] == 1
+
+    # --- Combined scenario from EPIC D spec ---
+
+    def test_fridge_and_5door_wardrobe(self):
+        """'Холодильник, 5 дверный шкаф' — fridge qty=1, wardrobe qty=1."""
+        result = extract_items("Холодильник, 5 дверный шкаф")
+        keys = {r["key"]: r["qty"] for r in result}
+        assert keys["refrigerator"] == 1
+        assert keys["wardrobe_large"] == 1
+
+    def test_fridge_and_wardrobe_x2(self):
+        """'Холодильник, шкаф x2' — fridge qty=1, wardrobe qty=2."""
+        result = extract_items("Холодильник, шкаф x2")
+        keys = {r["key"]: r["qty"] for r in result}
+        assert keys["refrigerator"] == 1
+        assert keys["wardrobe_large"] == 2
+
+
 class TestEstimatePriceWithQty:
     """Tests for estimate_price() with dict-based items (qty support)."""
 

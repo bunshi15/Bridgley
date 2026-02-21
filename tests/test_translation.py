@@ -1295,6 +1295,142 @@ class TestFormatCrewMessage:
         assert "נפח:" in result
 
 
+class TestCrewMessageMultiPickup:
+    """EPIC D3: Multi-pickup route and floors rendering in crew message."""
+
+    def _multi_pickup_payload(self) -> dict:
+        """Payload with 2 pickups."""
+        return {
+            "data": {
+                "cargo_description": "диван, коробки",
+                "floor_from": "3 без лифта",
+                "floor_to": "5 есть лифт",
+                "time_window": "morning",
+                "extras": ["loaders"],
+                "custom": {
+                    "lead_number": 99,
+                    "pickup_count": 2,
+                    "pickups": [
+                        {"addr": "Haifa, Herzl 10", "floor": "3 без лифта"},
+                        {"addr": "Haifa, Ben Gurion 5", "floor": "7 есть лифт"},
+                    ],
+                    "route_classification": {
+                        "from_locality": "Haifa",
+                        "to_locality": "Tel Aviv",
+                    },
+                    "geo_points": {
+                        "from": {"name": "Haifa", "lat": 32.8, "lon": 34.9},
+                        "from_2": {"name": "Haifa North", "lat": 32.85, "lon": 34.95},
+                        "to": {"name": "Tel Aviv", "lat": 32.0, "lon": 34.7},
+                    },
+                    "volume_category": "large",
+                    "cargo_items": [
+                        {"key": "sofa_3seat", "qty": 1},
+                        {"key": "box_standard", "qty": 5},
+                    ],
+                    "estimate_min": 1200,
+                    "estimate_max": 1600,
+                    "move_date": "2026-04-01",
+                },
+            }
+        }
+
+    def test_multi_pickup_route_shows_both_pickups(self, monkeypatch):
+        """Route line shows Pickup1 → Pickup2 → Destination."""
+        monkeypatch.setattr("app.config.settings.operator_lead_target_lang", "ru")
+        from app.infra.notification_service import format_crew_message
+        payload = self._multi_pickup_payload()
+        result = format_crew_message("lead-mp", payload)
+
+        # Route should show: Haifa → Haifa North → Tel Aviv
+        assert "Haifa" in result
+        assert "Haifa North" in result
+        assert "Tel Aviv" in result
+        assert "→" in result
+
+    def test_multi_pickup_floors_per_point_ru(self, monkeypatch):
+        """Floors section shows per-pickup floors + destination floor (Russian)."""
+        monkeypatch.setattr("app.config.settings.operator_lead_target_lang", "ru")
+        from app.infra.notification_service import format_crew_message
+        payload = self._multi_pickup_payload()
+        result = format_crew_message("lead-mp", payload)
+
+        # Should show "Забор 1:" and "Забор 2:" and "Доставка:"
+        assert "Забор 1:" in result
+        assert "Забор 2:" in result
+        assert "Доставка:" in result
+
+    def test_multi_pickup_floors_per_point_en(self, monkeypatch):
+        """Floors section uses English labels when lang=en."""
+        monkeypatch.setattr("app.config.settings.operator_lead_target_lang", "en")
+        from app.infra.notification_service import format_crew_message
+        payload = self._multi_pickup_payload()
+        result = format_crew_message("lead-mp", payload)
+
+        assert "Pickup 1:" in result
+        assert "Pickup 2:" in result
+        assert "Delivery:" in result
+
+    def test_multi_pickup_floors_per_point_he(self, monkeypatch):
+        """Floors section uses Hebrew labels when lang=he."""
+        monkeypatch.setattr("app.config.settings.operator_lead_target_lang", "he")
+        from app.infra.notification_service import format_crew_message
+        payload = self._multi_pickup_payload()
+        result = format_crew_message("lead-mp", payload)
+
+        assert "איסוף 1:" in result
+        assert "איסוף 2:" in result
+        assert "משלוח:" in result
+
+    def test_multi_pickup_elevator_info(self, monkeypatch):
+        """Elevator info is shown for each pickup floor."""
+        monkeypatch.setattr("app.config.settings.operator_lead_target_lang", "ru")
+        from app.infra.notification_service import format_crew_message
+        payload = self._multi_pickup_payload()
+        result = format_crew_message("lead-mp", payload)
+
+        # Pickup 1: floor 3, no elevator → "без лифта"
+        # Pickup 2: floor 7л → has elevator → "есть лифт"
+        assert "без лифта" in result
+        assert "есть лифт" in result
+
+    def test_single_pickup_still_works(self, monkeypatch):
+        """Single pickup (pickups list len=1 or absent) → old A → B format."""
+        monkeypatch.setattr("app.config.settings.operator_lead_target_lang", "ru")
+        from app.infra.notification_service import format_crew_message
+        payload = self._multi_pickup_payload()
+        # Convert to single pickup
+        payload["data"]["custom"]["pickup_count"] = 1
+        payload["data"]["custom"]["pickups"] = [
+            {"addr": "Haifa", "floor": "3"},
+        ]
+        result = format_crew_message("lead-mp", payload)
+
+        # Should NOT show "Забор 1:" — just simple floor → floor
+        assert "Забор 1:" not in result
+        # Should show single-line floors: "3 (без лифта) → 5 (есть лифт)"
+        assert "→" in result
+
+    def test_three_pickups(self, monkeypatch):
+        """Three pickups are rendered correctly."""
+        monkeypatch.setattr("app.config.settings.operator_lead_target_lang", "en")
+        from app.infra.notification_service import format_crew_message
+        payload = self._multi_pickup_payload()
+        payload["data"]["custom"]["pickups"].append(
+            {"addr": "Netanya", "floor": "1"}
+        )
+        payload["data"]["custom"]["pickup_count"] = 3
+        payload["data"]["custom"]["geo_points"]["from_3"] = {
+            "name": "Netanya", "lat": 32.3, "lon": 34.8,
+        }
+        result = format_crew_message("lead-mp", payload)
+
+        assert "Pickup 1:" in result
+        assert "Pickup 2:" in result
+        assert "Pickup 3:" in result
+        assert "Delivery:" in result
+
+
 class TestDispatchConfig:
     """Test dispatch config resolution."""
 
