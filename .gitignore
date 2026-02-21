@@ -1,0 +1,10 @@
+/.idea
+*.pyc
+*.zip
+/obsolete
+/postman/Stage0 Bot - Async Migration
+/.claude
+.coverage
+nul
+/reports
+/rules
