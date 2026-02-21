@@ -10,6 +10,12 @@ Format: phases map to feature milestones, not SemVer.
 
 _Working towards v1.0.0 — production stabilization._
 
+### Changed
+- **(EPIC A1.1) Bot package layout** — moved flat `moving_bot_*.py` modules
+  into `app/core/bots/moving_bot_v1/` package with `data/` subfolder for
+  JSON files. Old flat files are now 1-line re-export shims for backward
+  compatibility. Added `example/` bot template for future bot creation.
+
 ---
 
 ## v0.9.8 — Dispatch Layer Iteration 1: Operator Fallback (Manual Copy)

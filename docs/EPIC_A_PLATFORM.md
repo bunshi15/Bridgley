@@ -147,6 +147,7 @@ All job types must have clear ownership (Core vs Dispatch).
 * Rollback to v1 possible in < 1 minute
 
 ---
+
 All EPIC A + B1.5 work is complete. Here's the summary:
 
 ---
@@ -190,3 +191,31 @@ All EPIC A + B1.5 work is complete. Here's the summary:
 - Updated CHANGELOG with all EPIC A + B1.5 entries
 - Removed dead code (old function definitions replaced by re-exports)
 - All import chains verified clean
+
+---
+
+EPIC A1.1 is complete. Here's what was done:
+
+---
+
+## EPIC A1.1 — Bot Package Layout ✅
+
+### Summary
+Restructured `app/core/bots/` from a flat directory of `moving_bot_*.py` files into a clean **package-per-bot** layout.
+
+### What changed:
+
+| Step | Action | Status |
+|------|--------|--------|
+| **1** | Created `moving_bot_v1/data/` and copied 4 JSON files (localities, pricing, aliases) | ✅ |
+| **2** | Created 8 new modules in `moving_bot_v1/`: `__init__.py`, `config.py`, `texts.py`, `choices.py`, `validators.py`, `pricing.py`, `geo.py`, `localities.py` — with fixed internal imports (e.g. `moving_bot_config` → `moving_bot_v1.config`, JSON paths → `data/` subdir) | ✅ |
+| **3** | Converted 7 old flat `moving_bot_*.py` files into 1-line re-export shims (`from app.core.bots.moving_bot_v1.<module> import *`) — zero breakage for existing imports | ✅ |
+| **4** | Updated `bots/__init__.py` registry to import from new package paths | ✅ |
+| **5** | Created `example/` bot template with `__init__.py` (instructions) + `config.py` (minimal BotConfig skeleton) | ✅ |
+| **6** | Updated CHANGELOG + EPIC_INDEX.md | ✅ |
+| **7** | Full test suite: **1034 passed, 0 failures** (zero test file changes needed) | ✅ |
+
+### Key design decisions:
+- **`__all__`** lists added to `localities.py`, `validators.py`, `pricing.py`, `geo.py` to ensure `import *` in shims re-exports both public AND private names that tests depend on
+- **JSON paths** use `Path(__file__).parent / "data" / "..."` pattern for correct resolution from the new package location
+- **Backward compatibility**: All 50+ existing import sites (handler, tests, dispatch, engine) continue working unchanged through the thin shim layer

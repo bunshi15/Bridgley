@@ -1,0 +1,90 @@
+{
+  "_version": "2.0",
+  "_description": "Moving Bot pricing — Nationwide zone-based. Edit values here, no Python changes needed.",
+
+  "base": {
+    "callout": 150,
+    "no_elevator_per_floor": 50,
+    "extra_pickup": 70,
+    "estimate_margin": 0.15
+  },
+
+  "volume_categories": {
+    "small": 0,
+    "medium": 150,
+    "large": 350,
+    "xl": 600
+  },
+
+  "extras_adjustments": {
+    "narrow_stairs": 60,
+    "no_parking": 40,
+    "disassembly": 80,
+    "extra_movers": 80,
+    "client_helps": -60
+  },
+
+  "extras_service_mapping": {
+    "assembly": "disassembly"
+  },
+
+  "item_catalog": {
+    "dining_table":    [150, 200],
+    "dryer":           [140, 190],
+    "washing_machine": [180, 220],
+    "refrigerator":    [200, 280],
+    "sofa_2seat":      [150, 200],
+    "sofa_3seat":      [200, 250],
+    "wardrobe_small":  [150, 200],
+    "wardrobe_large":  [250, 400],
+    "bed_single":      [120, 150],
+    "bed_double":      [180, 250],
+    "desk":            [100, 150],
+    "box_standard":    [15, 20],
+    "bag_suitcase":    [15, 30],
+    "chair":           [20, 40],
+    "tv_monitor":      [40, 80]
+  },
+
+  "item_aliases": {
+    "refrigerator":    ["холодильник", "холодос", "fridge", "refrigerator", "מקרר"],
+    "dining_table":    ["обеденный стол", "стол обеденный", "стол", "table", "dining table", "שולחן אוכל", "שולחן"],
+    "washing_machine": ["стиральная машина", "стиралка", "стиральная", "washing machine", "washer", "מכונת כביסה"],
+    "dryer":           ["сушилка", "сушильная машина", "dryer", "מייבש", "מייבש כביסה"],
+    "sofa_2seat":      ["диванчик", "маленький диван", "двухместный диван", "loveseat", "small sofa", "2-seat sofa", "ספה קטנה", "ספה דו-מושבית"],
+    "sofa_3seat":      ["диван", "большой диван", "трёхместный диван", "sofa", "couch", "3-seat sofa", "ספה", "ספה גדולה"],
+    "wardrobe_small":  ["шкаф-солдатик", "шкаф 1 дверь", "шкаф 2 двери", "шкаф однодверный", "шкаф двухдверный", "маленький шкаф", "small wardrobe", "small closet", "ארון קטן"],
+    "wardrobe_large":  ["шифоньер 3 двери", "шифоньер 4 двери", "шифонер 3 двери", "шифонер 4 двери", "шкаф 3 двери", "шкаф 4 двери", "шкаф трёхдверный", "шкаф четырёхдверный", "шифоньер", "шифонер", "большой шкаф", "шкаф-купе", "large wardrobe", "big closet", "ארון גדול", "шкаф", "гардероб", "wardrobe", "closet", "ארון", "ארון בגדים"],
+    "bed_single":      ["кровать односпальная", "односпальная кровать", "single bed", "מיטת יחיד", "מיטה יחיד"],
+    "bed_double":      ["кровать", "двуспальная кровать", "кровать двуспальная", "bed", "double bed", "queen bed", "king bed", "מיטה", "מיטה זוגית"],
+    "desk":            ["письменный стол", "рабочий стол", "desk", "office desk", "שולחן כתיבה", "שולחן עבודה"],
+    "box_standard":    ["коробка", "коробки", "коробок", "box", "boxes", "קרטון", "קרטונים"],
+    "bag_suitcase":    ["сумка", "сумок", "чемодан", "сумки", "чемоданы", "bag", "bags", "suitcase", "suitcases", "תיק", "מזוודה", "תיקים", "מזוודות"],
+    "chair":           ["стул", "стулья", "chair", "chairs", "כיסא", "כיסאות"],
+    "tv_monitor":      ["телевизор", "монитор", "tv", "television", "monitor", "screen", "טלוויזיה", "מסך"]
+  },
+
+  "routing": {
+    "bands": {
+      "same_city": 0,
+      "same_metro": 150,
+      "same_region": 350,
+      "inter_region_short": 500,
+      "inter_region_long": 700,
+      "extreme_distance": 1200
+    },
+    "minimums": {
+      "same_region": 900,
+      "inter_region_short": 1100,
+      "inter_region_long": 1200,
+      "extreme_distance": 2000
+    }
+  },
+
+  "guards": {
+    "xl_volume_floor": 800,
+    "high_floor_no_elevator_threshold": 5,
+    "high_floor_surcharge_multiplier": 1.5,
+    "national_move_minimum": 1000
+  }
+}

@@ -3,6 +3,7 @@ EPIC_INDEX.md
 
 EPIC A — Platform
     A1 Engine Modularization
+    A1.1 Bot Package Layout (done)
     A2 Worker Separation
     A3 Deploy Profiles
 
@@ -17,3 +18,9 @@ EPIC C — Moving Bot v2
     C0 Skeleton
     C1 Fallback parser
     C2 Controlled dialog
+
+EPIC D — Parsing, Pricing & Rendering Correctness Fixes (done)
+
+EPIC E — Feature Flags & Kill Switches (Safe Degradation)
+
+EPIC F — Admin Control Plane (No UI first)
