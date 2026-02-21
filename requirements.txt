@@ -1,0 +1,46 @@
+# Core Framework
+fastapi==0.128.0
+uvicorn[standard]==0.40.0
+pydantic==2.12.5
+pydantic-settings~=2.12.0
+
+# Database
+asyncpg==0.31.0  # Async PostgreSQL driver (production)
+# psycopg2-binary==2.9.11  # Keep for reference during migration
+
+# API/Webhooks
+python-multipart==0.0.21
+twilio==9.10.0
+aiohttp==3.13.3
+
+# Image Processing (security: re-encoding, EXIF stripping)
+Pillow==12.0.0
+
+# S3-compatible Storage (AWS S3, Cloudflare R2, MinIO)
+boto3==1.42.39
+
+# Encryption (tenant credentials)
+cryptography>=44.0.0
+
+# Monitoring & Observability (optional but recommended)
+sentry-sdk[fastapi]==2.52.0
+
+# Background Tasks (optional - for session cleanup)
+apscheduler==3.11.2
+
+# Testing
+pytest==9.0.2
+pytest-asyncio==1.3.0
+pytest-cov==7.0.0
+httpx==0.28.1
+
+# Development Tools
+black==26.1.0
+ruff==0.14.13
+mypy==1.19.1
+
+# Production Server (alternative to uvicorn)
+# gunicorn==24.0.0
+
+# For load testing (dev only)
+# locust==2.35.2

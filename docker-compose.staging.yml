@@ -1,0 +1,139 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: stage0
+      POSTGRES_USER: stage0
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - pgdata_staging:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks: [staging]
+
+  migrate:
+    image: stage0-bot:staging
+    depends_on: [db]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      APP_ENV: "staging"
+    command: ["python", "-m", "app.infra.migrate"]
+    restart: "no"
+    networks: [staging]
+
+  app:
+    image: stage0-bot:staging
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_started
+    environment:
+      # important settings
+      APP_ENV: "staging"
+      TENANT_ID: ${TENANT_ID:-investor_01}
+
+      # DB
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+
+      # Security
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?ADMIN_TOKEN is required}
+      REQUIRE_WEBHOOK_VALIDATION: "true"
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
+      ENABLE_REQUEST_LOGGING: ${ENABLE_REQUEST_LOGGING:-true}
+      ADMIN_HOST: ${ADMIN_HOST:-}
+
+      # Admin Authentication Mode: "bearer", "hmac", or "both"
+      ADMIN_AUTH_MODE: ${ADMIN_AUTH_MODE:-both}
+
+      # Metrics access (optional token, defaults to internal network check)
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      # Comma-separated CIDR ranges for internal network access
+      # INTERNAL_NETWORKS: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8"
+      # Enable TRUST_PROXY_HEADERS since you're behind cloudflared
+      TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-true}
+
+      # Outbound Message Queue (Twilio rate limit handling)
+      OUTBOUND_MESSAGES_PER_SECOND: ${OUTBOUND_MESSAGES_PER_SECOND:-1.0}
+      OUTBOUND_MAX_RETRIES: ${OUTBOUND_MAX_RETRIES:-3}
+      OUTBOUND_BASE_RETRY_DELAY: ${OUTBOUND_BASE_RETRY_DELAY:-5.0}
+
+      # Twilio
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:?TWILIO_ACCOUNT_SID is required}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:?TWILIO_AUTH_TOKEN is required}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:?TWILIO_PHONE_NUMBER is required}
+      TWILIO_WEBHOOK_URL: ${TWILIO_WEBHOOK_URL:?TWILIO_WEBHOOK_URL is required}
+      OPERATOR_WHATSAPP: ${OPERATOR_WHATSAPP:-}
+
+      # Operator Notifications (whatsapp|telegram|email)
+      OPERATOR_NOTIFICATIONS_ENABLED: ${OPERATOR_NOTIFICATIONS_ENABLED:-true}
+      OPERATOR_NOTIFICATION_CHANNEL: ${OPERATOR_NOTIFICATION_CHANNEL:-whatsapp}
+
+      # Telegram (if channel=telegram)
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+
+      # S3/Bucket Storage
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:?S3_ENDPOINT_URL is required}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?S3_SECRET_KEY is required}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:?S3_BUCKET_NAME is required}
+      S3_REGION: ${S3_REGION:-auto}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+
+      # Image Processing Security
+      # Set to "false" to disable WebP (CVE-2023-4863 mitigation)
+      ALLOW_WEBP_IMAGES: ${ALLOW_WEBP_IMAGES:-true}
+      ALLOW_HEIC_IMAGES: ${ALLOW_HEIC_IMAGES:-true}
+      IMAGE_MAX_FILE_SIZE_MB: ${IMAGE_MAX_FILE_SIZE_MB:-10}
+      IMAGE_MAX_PIXELS_MILLIONS: ${IMAGE_MAX_PIXELS_MILLIONS:-16}
+
+      # optional
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    networks: [staging]
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN:?CF_TUNNEL_TOKEN is required}
+    restart: unless-stopped
+    depends_on: [app]
+    networks: [staging]
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?}
+    volumes:
+      - minio_data:/data
+    networks: [staging]
+
+  minio-init:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      for i in 1 2 3 4 5 6 7 8 9 10; do
+        mc alias set local http://minio:9000 \"$MINIO_ROOT_USER\" \"$MINIO_ROOT_PASSWORD\" && break;
+        echo 'waiting for minio...'; sleep 2;
+      done;
+      mc mb -p local/stage0 || true;
+      mc anonymous set none local/stage0 || true;
+      "
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?}
+    networks: [staging]
+    restart: "no"
+
+volumes:
+  pgdata_staging:
+
+networks:
+  staging:
+    driver: bridge

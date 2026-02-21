@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:17
+    container_name: stage0_db
+    environment:
+      POSTGRES_DB: stage0
+      POSTGRES_USER: stage0
+      POSTGRES_PASSWORD: stage0
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stage0 -d stage0"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    networks:
+      - stage0_network
+
+  app:
+    image: stage0-bot:dev
+    container_name: stage0_app
+    environment:
+      # Application
+      APP_ENV: dev
+      TENANT_ID: investor_01
+      LOG_LEVEL: INFO
+
+      # Database
+      DATABASE_URL: postgresql://stage0:stage0@db:5432/stage0
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: stage0
+      PGPASSWORD: stage0
+      PGDATABASE: stage0
+      PG_POOL_MIN: 2
+      PG_POOL_MAX: 20
+
+      # Session
+      SESSION_TTL_SECONDS: 21600
+
+      # Security (CHANGE IN PRODUCTION!)
+      ADMIN_TOKEN: dev-admin-token-change-me
+      REQUIRE_WEBHOOK_VALIDATION: "false"  # Set to "true" in production
+
+      # Twilio (configure when ready)
+      # TWILIO_AUTH_TOKEN:
+      # TWILIO_ACCOUNT_SID:
+      # TWILIO_PHONE_NUMBER:
+
+      # Features
+      ENABLE_REQUEST_LOGGING: "true"
+      ENABLE_METRICS: "true"
+      RATE_LIMIT_PER_MINUTE: 60
+
+      # Monitoring (optional)
+      # SENTRY_DSN:
+    ports:
+      - "8099:8099"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - stage0_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8099/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  stage0_network:
+    driver: bridge

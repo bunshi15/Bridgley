@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1220" />
+  <meta name="color-scheme" content="light" />
+
+  <title>Переезды по Хайфе и Северу Израиля — Moving Center Israel</title>
+  <meta name="description" content="Квартирные и офисные переезды по Хайфе и всему Израилю. Упаковка, разборка мебели, опытные грузчики. WhatsApp: 052-670-76-25" />
+  <link rel="canonical" href="./" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Moving Center Israel — Переезды по Хайфе и Северу" />
+  <meta property="og:description" content="Квартирные и офисные переезды, упаковка, разборка мебели и аккуратная доставка. Надёжно, аккуратно, без лишних затрат." />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ru_RU" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <!-- Favicon (inline SVG) -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Cpath fill='white' d='M14 36h26l4 8H18l-4-8Zm30 0h6c3 0 6-3 6-6v-7c0-2-2-4-4-4H44v17Zm-30-3v-9c0-3 3-6 6-6h22v15H14Z'/%3E%3Ccircle cx='22' cy='46' r='4' fill='white'/%3E%3Ccircle cx='42' cy='46' r='4' fill='white'/%3E%3C/svg%3E" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- LocalBusiness structured data -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"MovingCompany",
+    "name":"Moving Center Israel",
+    "areaServed":["Haifa","Northern District","Israel"],
+    "telephone":"+972526707625",
+    "url":"./",
+    "priceRange":"₪₪",
+    "sameAs":["https://www.facebook.com/people/Vladimir-Moving-Israel/61583372108720/"]
+  }
+  </script>
+
+  <style>
+    /* === Subtle background pattern === */
+    body::before{
+      content:'';
+      position:fixed;inset:0;
+      pointer-events:none;
+      background-image:
+        radial-gradient(circle at 1px 1px, rgba(15,23,42,.06) 1px, transparent 1px);
+      background-size: 22px 22px;
+      opacity:.45;
+      mask-image: radial-gradient(900px 520px at 20% 20%, rgba(0,0,0,.95), transparent 65%);
+      -webkit-mask-image: radial-gradient(900px 520px at 20% 20%, rgba(0,0,0,.95), transparent 65%);
+    }
+    body::after{
+      content:'';
+      position:fixed;inset:0;
+      pointer-events:none;
+      background:
+        radial-gradient(900px 480px at 90% 20%, rgba(37,99,235,.10), transparent 60%),
+        radial-gradient(800px 420px at 70% 90%, rgba(37,211,102,.10), transparent 60%);
+      opacity:.9;
+    }
+
+    /* Reviews avatars (no external images) */
+    .avatar{
+      font-weight:950;
+      letter-spacing:-.02em;
+    }
+    .avatar .initials{font-size:1.05rem;line-height:1}
+    /* Slight per-card variation */
+    .review:nth-child(1) .avatar{background:linear-gradient(135deg, rgba(59,130,246,.95), rgba(99,102,241,.95));}
+    .review:nth-child(2) .avatar{background:linear-gradient(135deg, rgba(16,185,129,.95), rgba(59,130,246,.95));}
+    .review:nth-child(3) .avatar{background:linear-gradient(135deg, rgba(139,92,246,.95), rgba(236,72,153,.95));}
+
+    /* === Modern ambient animations === */
+    .blob{
+      z-index:0;
+      position:absolute;
+      width:520px;height:520px;
+      border-radius:999px;
+      filter:blur(40px);
+      opacity:.55;
+      mix-blend-mode:multiply;
+      animation:blobMove 18s cubic-bezier(.16,1,.3,1) infinite alternate;
+      pointer-events:none;
+    }
+    .blob.b1{left:-180px;top:-220px;background:radial-gradient(circle at 30% 30%, rgba(37,99,235,.75), rgba(79,70,229,0) 60%);}
+    .blob.b2{right:-220px;top:-160px;background:radial-gradient(circle at 35% 35%, rgba(99,102,241,.72), rgba(59,130,246,0) 62%);animation-duration:22s;}
+    .blob.b3{left:30%;bottom:-260px;background:radial-gradient(circle at 35% 35%, rgba(37,211,102,.55), rgba(34,197,94,0) 62%);animation-duration:26s;}
+    @keyframes blobMove{
+      0%{transform:translate3d(0,0,0) scale(1) rotate(0deg)}
+      50%{transform:translate3d(40px,22px,0) scale(1.05) rotate(6deg)}
+      100%{transform:translate3d(-26px,34px,0) scale(.98) rotate(-4deg)}
+    }
+
+    .shine{
+      z-index:0;
+      position:absolute;inset:-40%;
+      background:linear-gradient(120deg, transparent 40%, rgba(255,255,255,.35) 50%, transparent 60%);
+      transform:translateX(-40%);
+      animation:shine 6.5s var(--ease) infinite;
+      pointer-events:none;
+      opacity:.35;
+    }
+    @keyframes shine{
+      0%{transform:translateX(-45%) rotate(8deg)}
+      55%{transform:translateX(45%) rotate(8deg)}
+      100%{transform:translateX(45%) rotate(8deg)}
+    }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      .blob,.shine{
+      z-index:0;animation:none!important}
+    }
+
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg:#f6f7fb;
+      --text:#0b1220;
+      --muted:#5b667a;
+      --border:rgba(15,23,42,.10);
+      --shadow:0 12px 30px rgba(2,8,23,.08);
+      --shadow-soft:0 10px 24px rgba(2,8,23,.06);
+      --radius:18px;
+      --ease:cubic-bezier(.16,1,.3,1);
+
+      --blue:#2563eb;
+      --blue2:#1d4ed8;
+      --indigo:#4f46e5;
+      --green:#25d366;
+      --green2:#1da851;
+      --amber:#f59e0b;
+    }
+
+    html{scroll-behavior:smooth}
+    body{
+      font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+      background:
+        radial-gradient(1200px 700px at 20% -10%, rgba(37,99,235,.20), transparent 55%),
+        radial-gradient(900px 600px at 100% 0%, rgba(79,70,229,.18), transparent 55%),
+        linear-gradient(180deg, #f8fafc 0%, var(--bg) 60%, #f8fafc 100%);
+      color:var(--text);
+      line-height:1.6;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      overflow-x:hidden;
+    }
+
+    a{color:inherit}
+    .wrap{max-width:980px;margin:0 auto;padding:0 20px}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 12px;border-radius:999px;
+      background:rgba(255,255,255,.75);
+      border:1px solid var(--border);
+      box-shadow:0 6px 18px rgba(2,8,23,.05);
+      backdrop-filter:blur(10px);
+      -webkit-backdrop-filter:blur(10px);
+      color:rgba(11,18,32,.9);
+      font-size:.86rem;
+      font-weight:600;
+      white-space:nowrap;
+    }
+    .pill svg{width:16px;height:16px;fill:currentColor;opacity:.9}
+
+    /* ===== Header ===== */
+    .topbar{
+      position:sticky;top:0;z-index:120;
+      background:rgba(246,247,251,.75);
+      border-bottom:1px solid rgba(15,23,42,.08);
+      backdrop-filter:blur(12px);
+      -webkit-backdrop-filter:blur(12px);
+    }
+    .topbar .inner{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:12px 0;
+      gap:12px;
+    }
+    .brand{
+      display:flex;align-items:center;gap:10px;
+      text-decoration:none;
+    }
+    .logo{
+      width:38px;height:38px;border-radius:14px;
+      background:linear-gradient(135deg, var(--blue), var(--indigo));
+      box-shadow:0 10px 24px rgba(37,99,235,.25);
+      display:grid;place-items:center;
+      color:#fff;flex-shrink:0;
+    }
+    .logo svg{width:22px;height:22px;fill:#fff}
+    .brand b{display:block;line-height:1.05;letter-spacing:-.02em}
+    .brand small{display:block;color:var(--muted);font-weight:600;font-size:.78rem;margin-top:2px}
+    .top-actions{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;justify-content:flex-end}
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      padding:10px 14px;border-radius:14px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.85);
+      text-decoration:none;
+      font-weight:800;
+      font-size:.88rem;
+      white-space:nowrap;
+      box-shadow:0 10px 22px rgba(2,8,23,.06);
+      transition:transform .2s var(--ease), box-shadow .2s var(--ease), background .2s var(--ease);
+    }
+    .btn:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(2,8,23,.10)}
+    .btn:active{transform:translateY(0);box-shadow:0 8px 18px rgba(2,8,23,.06)}
+    .btn svg{width:18px;height:18px;fill:currentColor;flex-shrink:0}
+    .btn.primary{
+      border-color:rgba(37,211,102,.22);
+      background:linear-gradient(135deg, rgba(37,211,102,.95), rgba(29,168,81,.95));
+      color:#fff;
+      box-shadow:0 12px 26px rgba(37,211,102,.25);
+    }
+    .btn.primary:hover{box-shadow:0 18px 36px rgba(37,211,102,.30)}
+    .btn.ghost{
+      background:rgba(255,255,255,.55);
+    }
+    /* Mobile: compact header buttons */
+    @media (max-width:600px){
+      .top-actions .btn-label{display:none}
+      .top-actions .btn{padding:10px 12px;font-size:.84rem}
+      .top-actions .btn.primary{padding:10px 14px}
+    }
+
+    /* ===== Hero ===== */
+    .hero{
+      padding:44px 0 18px;
+    }
+    .hero-grid{
+      display:grid;
+      grid-template-columns: 1.25fr .75fr;
+      gap:22px;
+      align-items:stretch;
+    }
+    @media (max-width: 860px){
+      .hero-grid{grid-template-columns:1fr;gap:14px}
+    }
+    .hero-card{
+      background:linear-gradient(180deg, rgba(255,255,255,.88) 0%, rgba(255,255,255,.72) 100%);
+      border:1px solid var(--border);
+      border-radius:calc(var(--radius) + 6px);
+      box-shadow:var(--shadow);
+      padding:26px;
+      position:relative;
+      overflow:hidden;
+    }
+    .hero-card::before{
+      content:'';
+      position:absolute;inset:-2px;
+      background:
+        radial-gradient(800px 420px at 10% 0%, rgba(37,99,235,.18), transparent 60%),
+        radial-gradient(700px 360px at 100% 20%, rgba(79,70,229,.14), transparent 55%);
+      pointer-events:none;
+    }
+    .hero-card > *:not(.blob):not(.shine){position:relative; z-index:1}
+    .kicker{
+      display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+      margin-bottom:14px;
+    }
+    .hero h1{
+      font-size:clamp(1.9rem, 4vw, 2.55rem);
+      font-weight:900;
+      letter-spacing:-.04em;
+      line-height:1.1;
+      margin-bottom:12px;
+    }
+    .hero p{
+      color:rgba(11,18,32,.78);
+      font-weight:600;
+      font-size:1.02rem;
+      max-width:54ch;
+      margin-bottom:18px;
+    }
+    .hero-cta{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin:14px 0 8px;
+    }
+    .trust{
+      display:flex;gap:14px;flex-wrap:wrap;
+      margin-top:16px;color:rgba(11,18,32,.70);
+      font-weight:700;font-size:.88rem;
+    }
+    .trust span{display:inline-flex;align-items:center;gap:8px}
+    .dot{
+      width:10px;height:10px;border-radius:50%;
+      background:linear-gradient(135deg, var(--blue), var(--indigo));
+      box-shadow:0 8px 18px rgba(37,99,235,.22);
+    }
+
+    /* Side card (quick quote) */
+    .quote-card{
+      background:rgba(255,255,255,.80);
+      border:1px solid var(--border);
+      border-radius:calc(var(--radius) + 6px);
+      box-shadow:var(--shadow-soft);
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+    .quote-card h2{
+      font-size:1.05rem;
+      letter-spacing:-.02em;
+      font-weight:900;
+    }
+    .mini{
+      color:var(--muted);
+      font-weight:600;
+      font-size:.9rem;
+    }
+    .form{
+      display:grid;
+      gap:10px;
+    }
+    .field{
+      display:grid;
+      gap:6px;
+    }
+    label{
+      font-size:.82rem;
+      font-weight:800;
+      color:rgba(11,18,32,.78);
+    }
+    input, select, textarea{
+      width:100%;
+      border:1px solid rgba(15,23,42,.12);
+      border-radius:14px;
+      padding:12px 12px;
+      background:rgba(255,255,255,.92);
+      font:inherit;
+      font-weight:650;
+      color:var(--text);
+      outline:none;
+      transition:border-color .2s var(--ease), box-shadow .2s var(--ease), transform .2s var(--ease);
+    }
+    textarea{min-height:88px;resize:vertical}
+    input:focus, select:focus, textarea:focus{
+      border-color:rgba(37,99,235,.32);
+      box-shadow:0 0 0 6px rgba(37,99,235,.12);
+    }
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media (max-width: 420px){.grid2{grid-template-columns:1fr}}
+
+    .hint{
+      font-size:.78rem;color:rgba(91,102,122,.9);
+      font-weight:650;
+    }
+
+    /* ===== Sections ===== */
+    .section{padding:30px 0}
+    .section-title{
+      font-size:1.35rem;
+      font-weight:950;
+      letter-spacing:-.03em;
+      text-align:center;
+      margin-bottom:18px;
+    }
+    .sub-title{
+      text-align:center;
+      color:rgba(11,18,32,.70);
+      font-weight:650;
+      margin:-10px auto 18px;
+      max-width:62ch;
+    }
+
+    /* ===== Cards grid ===== */
+    .grid{
+      display:grid;
+      gap:12px;
+    }
+    .grid.services{grid-template-columns:repeat(4,1fr)}
+    @media (max-width: 920px){.grid.services{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width: 520px){.grid.services{grid-template-columns:1fr}}
+    .card{
+      background:rgba(255,255,255,.84);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:0 10px 24px rgba(2,8,23,.06);
+      padding:16px;
+      transition:transform .25s var(--ease), box-shadow .25s var(--ease), border-color .25s var(--ease);
+      overflow:hidden;
+      position:relative;
+    }
+    .card:hover{
+      transform:translateY(-2px);
+      box-shadow:0 16px 34px rgba(2,8,23,.10);
+      border-color:rgba(37,99,235,.18);
+    }
+    .card .icon{
+      width:44px;height:44px;border-radius:14px;
+      display:grid;place-items:center;
+      background:linear-gradient(135deg, rgba(37,99,235,.14), rgba(79,70,229,.12));
+      border:1px solid rgba(37,99,235,.10);
+      margin-bottom:10px;
+      font-size:1.3rem;
+    }
+    .card h3{
+      font-size:.98rem;
+      letter-spacing:-.01em;
+      font-weight:900;
+      margin-bottom:6px;
+    }
+    .card p{color:var(--muted);font-weight:650;font-size:.88rem;line-height:1.45}
+
+    /* ===== Steps ===== */
+    .steps{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:12px;
+    }
+    @media (max-width: 860px){.steps{grid-template-columns:1fr}}
+    .step{
+      padding:18px;
+      border-radius:var(--radius);
+      background:rgba(255,255,255,.84);
+      border:1px solid var(--border);
+      box-shadow:0 10px 24px rgba(2,8,23,.06);
+      transition:transform .25s var(--ease), box-shadow .25s var(--ease);
+      position:relative;
+      overflow:hidden;
+    }
+    .step:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(2,8,23,.10)}
+    .badge{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:6px 10px;border-radius:999px;
+      background:rgba(37,99,235,.10);
+      border:1px solid rgba(37,99,235,.12);
+      color:rgba(29,78,216,.95);
+      font-weight:900;
+      font-size:.82rem;
+      margin-bottom:10px;
+    }
+    .step h3{font-size:1.0rem;font-weight:950;letter-spacing:-.02em;margin-bottom:6px}
+    .step p{color:var(--muted);font-weight:650;font-size:.9rem}
+
+    /* ===== Photo carousel ===== */
+    .carousel{
+      margin:18px auto;
+      max-width:760px;
+      position:relative;
+      border-radius:var(--radius);
+      overflow:hidden;
+      box-shadow:var(--shadow);
+    }
+    @media (min-width:1200px){.carousel{max-width:720px}}
+    .carousel-track{
+      display:flex;
+      transition:transform .55s var(--ease);
+      will-change:transform;
+    }
+    .carousel-slide{
+      min-width:100%;
+      position:relative;
+      overflow:hidden;
+    }
+    .carousel-slide img{
+      width:100%;
+      height:480px;
+      object-fit:cover;
+      display:block;
+      filter:brightness(.94) saturate(1.06);
+      transition:transform 5s linear;
+    }
+    /* Slow Ken Burns drift on active slide */
+    .carousel-slide.active img{
+      transform:scale(1.04);
+    }
+    @media (max-width:860px){.carousel-slide img{height:500px}}
+    @media (max-width:520px){.carousel-slide img{height:320px}}
+    /* Bottom gradient */
+    .carousel-slide::after{
+      content:'';
+      position:absolute;inset:0;
+      background:linear-gradient(180deg, rgba(11,18,32,0) 45%, rgba(11,18,32,.4) 100%);
+      pointer-events:none;
+    }
+    .carousel-slide .caption{
+      position:absolute;
+      bottom:16px;left:20px;right:20px;
+      z-index:2;
+      color:#fff;
+      font-weight:800;
+      font-size:.9rem;
+      text-shadow:0 2px 10px rgba(0,0,0,.45);
+      opacity:.92;
+    }
+    /* Dots */
+    .carousel-dots{
+      position:absolute;
+      bottom:14px;right:18px;
+      z-index:3;
+      display:flex;gap:7px;
+    }
+    .carousel-dot{
+      width:8px;height:8px;border-radius:50%;
+      background:rgba(255,255,255,.45);
+      border:none;cursor:pointer;
+      padding:0;
+      transition:all .3s var(--ease);
+    }
+    .carousel-dot.active{
+      background:#fff;
+      width:22px;border-radius:4px;
+      box-shadow:0 1px 6px rgba(0,0,0,.2);
+    }
+    /* Arrows */
+    .carousel-arrow{
+      position:absolute;top:50%;z-index:3;
+      transform:translateY(-50%);
+      width:36px;height:36px;border-radius:50%;
+      background:rgba(255,255,255,.85);
+      border:1px solid rgba(15,23,42,.08);
+      box-shadow:0 4px 14px rgba(0,0,0,.12);
+      cursor:pointer;
+      display:grid;place-items:center;
+      transition:all .25s var(--ease);
+      backdrop-filter:blur(6px);
+      -webkit-backdrop-filter:blur(6px);
+    }
+    .carousel-arrow:hover{
+      background:#fff;
+      transform:translateY(-50%) scale(1.08);
+      box-shadow:0 6px 20px rgba(0,0,0,.16);
+    }
+    .carousel-arrow:active{transform:translateY(-50%) scale(.96)}
+    .carousel-arrow svg{width:16px;height:16px;fill:var(--text)}
+    .carousel-prev{left:12px}
+    .carousel-next{right:12px}
+    @media (max-width:520px){
+      .carousel-arrow{width:32px;height:32px}
+      .carousel-prev{left:8px}
+      .carousel-next{right:8px}
+    }
+
+    /* ===== Advantages ===== */
+    .adv{grid-template-columns:repeat(3,1fr)}
+    @media (max-width: 860px){.adv{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width: 520px){.adv{grid-template-columns:1fr}}
+
+    /* ===== Reviews ===== */
+    .reviews{grid-template-columns:repeat(3,1fr)}
+    @media (max-width: 920px){.reviews{grid-template-columns:1fr}}
+    .review{
+      padding:18px;
+    }
+    .review-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+    .avatar{
+      width:44px;height:44px;border-radius:50%;
+      background:linear-gradient(135deg, rgba(99,102,241,.95), rgba(139,92,246,.95));
+      color:#fff;font-weight:950;
+      display:grid;place-items:center;
+      border:2px solid rgba(37,99,235,.10);
+      flex-shrink:0;
+      overflow:hidden;
+    }
+    .avatar img{width:100%;height:100%;object-fit:cover;display:block}
+    .meta{min-width:0}
+    .name{font-weight:950;letter-spacing:-.01em}
+    .date{color:rgba(91,102,122,.85);font-weight:700;font-size:.78rem;margin-top:1px}
+    .stars{color:var(--amber);letter-spacing:2px;font-size:.8rem;margin-top:2px}
+    .text{color:rgba(91,102,122,.95);font-weight:650;font-size:.92rem;line-height:1.6}
+    .link-row{text-align:center;margin-top:14px}
+    .link{
+      display:inline-flex;align-items:center;gap:8px;
+      color:rgba(29,78,216,.95);
+      font-weight:900;
+      text-decoration:none;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(37,99,235,.14);
+      background:rgba(255,255,255,.55);
+      transition:transform .2s var(--ease), box-shadow .2s var(--ease);
+    }
+    .link:hover{transform:translateY(-1px);box-shadow:0 12px 26px rgba(2,8,23,.08)}
+    .link svg{width:16px;height:16px;fill:currentColor}
+
+    /* ===== Area ===== */
+    .area{
+      text-align:center;
+      padding:22px;
+    }
+    .badges{
+      display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px;
+    }
+    .tag{
+      padding:8px 12px;border-radius:999px;
+      background:rgba(37,99,235,.10);
+      border:1px solid rgba(37,99,235,.12);
+      color:rgba(29,78,216,.95);
+      font-weight:900;
+      font-size:.82rem;
+      transition:transform .2s var(--ease), background .2s var(--ease);
+    }
+    .tag:hover{transform:translateY(-1px);background:rgba(37,99,235,.14)}
+
+    /* ===== FAQ ===== */
+    details{
+      background:rgba(255,255,255,.84);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:0 10px 24px rgba(2,8,23,.06);
+      padding:14px 16px;
+      transition:box-shadow .25s var(--ease), transform .25s var(--ease);
+    }
+    details:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(2,8,23,.08)}
+    summary{
+      cursor:pointer;
+      list-style:none;
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+      font-weight:950;
+      letter-spacing:-.01em;
+    }
+    summary::-webkit-details-marker{display:none}
+    .chev{
+      width:18px;height:18px;flex-shrink:0;opacity:.75;
+      transition:transform .2s var(--ease);
+      margin-top:2px;
+    }
+    details[open] .chev{transform:rotate(180deg)}
+    .faq p{color:var(--muted);font-weight:650;margin-top:10px}
+
+    /* ===== Footer ===== */
+    .footer{
+      padding:28px 0 100px;
+      padding-bottom:calc(100px + env(safe-area-inset-bottom, 0px));
+      text-align:center;
+      color:rgba(91,102,122,.9);
+      font-weight:650;
+      font-size:.86rem;
+    }
+    .footer a{color:rgba(29,78,216,.95);text-decoration:none;border-bottom:1px dashed rgba(29,78,216,.35)}
+    .footer a:hover{border-bottom-color:rgba(29,78,216,.7)}
+
+    /* ===== Sticky bottom CTA ===== */
+    .sticky{
+      position:fixed;left:0;right:0;bottom:0;
+      z-index:200;
+      padding:10px 14px;
+      padding-bottom:calc(10px + env(safe-area-inset-bottom, 0px));
+      background:rgba(246,247,251,.82);
+      border-top:1px solid rgba(15,23,42,.08);
+      backdrop-filter:blur(14px);
+      -webkit-backdrop-filter:blur(14px);
+      box-shadow:0 -14px 34px rgba(2,8,23,.10);
+    }
+    .sticky .row{
+      max-width:980px;margin:0 auto;
+      display:flex;gap:8px;align-items:center;justify-content:center;
+      padding:0 6px;
+    }
+    .sticky .row .btn{flex:1;min-width:0;max-width:420px}
+
+    /* ===== Reveal animations ===== */
+    .reveal{opacity:0;transform:translateY(16px);transition:opacity .7s var(--ease), transform .7s var(--ease)}
+    .reveal.visible{opacity:1;transform:translateY(0)}
+    .reveal-stagger .reveal-item{opacity:0;transform:translateY(12px);transition:opacity .55s var(--ease), transform .55s var(--ease)}
+    .reveal-stagger.visible .reveal-item{opacity:1;transform:translateY(0)}
+    .reveal-stagger.visible .reveal-item:nth-child(1){transition-delay:0s}
+    .reveal-stagger.visible .reveal-item:nth-child(2){transition-delay:.06s}
+    .reveal-stagger.visible .reveal-item:nth-child(3){transition-delay:.12s}
+    .reveal-stagger.visible .reveal-item:nth-child(4){transition-delay:.18s}
+    .reveal-stagger.visible .reveal-item:nth-child(5){transition-delay:.24s}
+    .reveal-stagger.visible .reveal-item:nth-child(6){transition-delay:.30s}
+    .reveal-stagger.visible .reveal-item:nth-child(7){transition-delay:.36s}
+    .reveal-stagger.visible .reveal-item:nth-child(8){transition-delay:.42s}
+    .reveal-stagger.visible .reveal-item:nth-child(9){transition-delay:.48s}
+    .reveal-stagger.visible .reveal-item:nth-child(10){transition-delay:.54s}
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+      .reveal,.reveal-stagger .reveal-item{opacity:1;transform:none}
+    }
+
+    [id]{scroll-margin-top:72px}
+  </style>
+</head>
+
+<body>
+
+  <!-- Header -->
+  <header class="topbar">
+    <div class="wrap">
+      <div class="inner">
+        <a class="brand" href="#top">
+          <span class="logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M3 7h11v10H3V7zm12 3h3a3 3 0 0 1 3 3v4h-6V10zm-9 9a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm12 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
+          </span>
+          <span>
+            <b>Moving Center Israel</b>
+            <small>Переезды • Весь Израиль</small>
+          </span>
+        </a>
+
+        <nav class="top-actions" aria-label="Контакты">
+          <a class="btn ghost" href="tel:+972526707625" aria-label="Позвонить">
+            <svg viewBox="0 0 24 24"><path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z"/></svg>
+            <span class="btn-label">052-670-76-25</span>
+          </a>
+          <a class="btn primary" id="waTop" href="https://wa.me/972526707625?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5!%20%D0%A5%D0%BE%D1%87%D1%83%20%D1%83%D0%B7%D0%BD%D0%B0%D1%82%D1%8C%20%D1%81%D1%82%D0%BE%D0%B8%D0%BC%D0%BE%D1%81%D1%82%D1%8C%20%D0%BF%D0%B5%D1%80%D0%B5%D0%B5%D0%B7%D0%B4%D0%B0" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12.05 21.785h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.981.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"/></svg>
+            <span class="btn-label">WhatsApp-бот</span>
+          </a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- Hero -->
+    <section class="hero">
+      <div class="wrap">
+        <div class="hero-grid">
+
+          <div class="hero-card reveal">
+            <div class="blob b1" aria-hidden="true"></div>
+            <div class="blob b2" aria-hidden="true"></div>
+            <div class="blob b3" aria-hidden="true"></div>
+            <div class="shine" aria-hidden="true"></div>
+            <div class="kicker">
+              <span class="pill">
+                <svg viewBox="0 0 24 24"><path d="M12 2l3 7 7 .6-5.3 4.6L18.4 22 12 18.1 5.6 22l1.7-7.8L2 9.6 9 9l3-7z"/></svg>
+                5★ отзывы на Facebook
+              </span>
+              <span class="pill">
+                <svg viewBox="0 0 24 24"><path d="M12 1l8 4v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-4zM10.8 14.6l-2-2 1.4-1.4 0.6 0.6 3-3 1.4 1.4-4.4 4.4z"/></svg>
+                Аккуратно • без сюрпризов
+              </span>
+              <span class="pill">
+                <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 110 8 4 4 0 010-8zm0-6a10 10 0 100 20 10 10 0 000-20z"/></svg>
+                Хайфа + вся страна
+              </span>
+            </div>
+
+            <h1>Переезды по всему<br/>Израилю</h1>
+            <p>
+              Квартирные и офисные переезды, упаковка, разборка мебели и аккуратная доставка.
+              Быстро согласуем детали в WhatsApp — без ожидания и “перекиньте нас на менеджера”.
+            </p>
+
+            <div class="hero-cta">
+              <a class="btn primary" href="#quote">Получить цену в WhatsApp</a>
+              <a class="btn" href="#services">Посмотреть услуги</a>
+            </div>
+
+            <div class="trust">
+              <span><span class="dot"></span> Оператор уточнит детали</span>
+              <span><span class="dot"></span> Предварительная оценка за 2 минуты</span>
+              <span><span class="dot"></span> Работаем по всей стране — от Хайфы до Эйлата!</span>
+            </div>
+
+          </div>
+
+          <aside class="quote-card reveal" id="quote" aria-label="Быстрый расчет">
+            <h2>Быстрый расчёт</h2>
+            <div class="mini">Заполни пару полей — откроем WhatsApp с готовым сообщением.</div>
+
+            <form class="form" id="quoteForm">
+              <div class="grid2">
+                <div class="field">
+                  <label for="qFrom">Откуда</label>
+                  <input id="qFrom" name="from" placeholder="Напр. Хайфа, Нешер" autocomplete="address-level2" />
+                </div>
+                <div class="field">
+                  <label for="qTo">Куда</label>
+                  <input id="qTo" name="to" placeholder="Напр. Тель-Авив" autocomplete="address-level2" />
+                </div>
+              </div>
+
+              <div class="grid2">
+                <div class="field">
+                  <label for="qType">Тип переезда</label>
+                  <select id="qType" name="type">
+                    <option value="Квартира">Квартира</option>
+                    <option value="Офис">Офис</option>
+                    <option value="Только машина + водитель">Только машина + водитель</option>
+                    <option value="Подъёмник / window lift">Подъёмник / window lift</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="qWhen">Дата (примерно)</label>
+                  <input id="qWhen" name="when" placeholder="Напр. 20–22 февраля" />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="qNotes">Что перевезти</label>
+                <textarea id="qNotes" name="notes" placeholder="Комнаты, этаж/лифт, крупные вещи (холодильник, диван...), есть ли разборка/упаковка"></textarea>
+                <div class="hint">Можно кратко — оператор уточнит.</div>
+              </div>
+
+              <button type="submit" class="btn primary" style="width:100%">
+                <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+                Отправить в WhatsApp
+              </button>
+
+              <a class="btn" href="tel:+972526707625" style="width:100%">
+                <svg viewBox="0 0 24 24"><path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z"/></svg>
+                Или позвонить: 052-670-76-25
+              </a>
+            </form>
+          </aside>
+
+        </div>
+      </div>
+    
+    </section>
+
+    <!-- Services -->
+
+    <section class="section reveal" id="services">
+      <div class="wrap">
+        <h2 class="section-title">Наши услуги</h2>
+
+        <div class="grid services reveal-stagger">
+          <div class="card reveal-item">
+            <div class="icon">🏠</div>
+            <h3>Квартирные переезды</h3>
+            <p>Полный переезд из квартиры любого размера — аккуратно и быстро.</p>
+          </div>
+
+          <div class="card reveal-item">
+            <div class="icon">🏢</div>
+            <h3>Офисные переезды</h3>
+            <p>Переезд офиса с минимальным простоем. Поможем с упаковкой техники.</p>
+          </div>
+
+          <div class="card reveal-item">
+            <div class="icon">🔧</div>
+            <h3>Разборка / сборка мебели</h3>
+            <p>Профессиональная разборка, маркировка и сборка на месте.</p>
+          </div>
+
+          <div class="card reveal-item">
+            <div class="icon">📦</div>
+            <h3>Упаковка вещей</h3>
+            <p>Бережная упаковка и защита: коробки, плёнка, ремни.</p>
+          </div>
+
+          <div class="card reveal-item">
+            <div class="icon">💪</div>
+            <h3>Опытные грузчики</h3>
+            <p>Команда с опытом, аккуратный вынос и занос без “побитых углов”.</p>
+          </div>
+
+          <div class="card reveal-item">
+            <div class="icon">🏗️</div>
+            <h3>Услуги подъёмника</h3>
+            <p>Подъём крупногабарита через окно. Удобно для высоких этажей.</p>
+          </div>
+
+          <div class="card reveal-item">
+            <div class="icon">🚛</div>
+            <h3>Авто с водителем</h3>
+            <p>Только машина и водитель — если грузишь/разгружаешь сам.</p>
+          </div>
+
+          <div class="card reveal-item">
+            <div class="icon">🇮🇱</div>
+            <h3>По всему Израилю</h3>
+            <p>От Хайфы до Эйлата. Маршрут согласуем заранее.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="section reveal" id="how">
+      <div class="wrap">
+        <h2 class="section-title">Как это работает</h2>
+
+        <div class="steps reveal-stagger">
+          <div class="step reveal-item">
+            <div class="badge">Шаг 1</div>
+            <h3>Напиши в WhatsApp</h3>
+            <p>Наш бот поможет быстро оформить заявку и собрать исходные данные.</p>
+          </div>
+          <div class="step reveal-item">
+            <div class="badge">Шаг 2</div>
+            <h3>Получишь оценку стоимости</h3>
+            <p>Предварительная цена — быстро, без звонков и ожидания.</p>
+          </div>
+          <div class="step reveal-item">
+            <div class="badge">Шаг 3</div>
+            <h3>Подтверждаем и выезжаем</h3>
+            <p>Оператор уточнит детали и назначит дату/время переезда.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Photo carousel -->
+    <div class="wrap reveal">
+      <div class="carousel" id="carousel" aria-label="Фотографии работы">
+        <div class="carousel-track" id="carouselTrack">
+          <div class="carousel-slide active">
+            <img src="img/img1.webp" alt="Грузчики загружают коробки в машину" loading="lazy" />
+            <div class="caption">Опытная команда — бережно и без суеты</div>
+          </div>
+          <div class="carousel-slide">
+            <img src="img/img2.webp" alt="Грузовик на улице Хайфы" loading="lazy" />
+            <div class="caption">Новые грузовики ISUZU с тентом</div>
+          </div>
+          <div class="carousel-slide">
+            <img src="img/img3.webp" alt="Команда грузчиков работает с рампой" loading="lazy" />
+            <div class="caption">Аккуратная погрузка и разгрузка</div>
+          </div>
+        </div>
+        <button class="carousel-arrow carousel-prev" aria-label="Назад" type="button">
+          <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        </button>
+        <button class="carousel-arrow carousel-next" aria-label="Вперёд" type="button">
+          <svg viewBox="0 0 24 24"><path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
+        </button>
+        <div class="carousel-dots" id="carouselDots">
+          <button class="carousel-dot active" aria-label="Фото 1" type="button"></button>
+          <button class="carousel-dot" aria-label="Фото 2" type="button"></button>
+          <button class="carousel-dot" aria-label="Фото 3" type="button"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Advantages -->
+    <section class="section reveal" id="why">
+      <div class="wrap">
+        <h2 class="section-title">Почему нас выбирают</h2>
+
+        <div class="grid adv reveal-stagger">
+          <div class="card reveal-item">
+            <div class="icon">⏱️</div>
+            <h3>Быстрый отклик</h3>
+            <p>Обычно отвечаем в WhatsApp в течение нескольких минут.</p>
+          </div>
+          <div class="card reveal-item">
+            <div class="icon">💰</div>
+            <h3>Честные цены</h3>
+            <p>Без скрытых доплат — заранее проговариваем детали, влияющие на цену.</p>
+          </div>
+          <div class="card reveal-item">
+            <div class="icon">🛡️</div>
+            <h3>Аккуратность</h3>
+            <p>Защищаем мебель и технику, работаем спокойно и бережно.</p>
+          </div>
+          <div class="card reveal-item">
+            <div class="icon">🚚</div>
+            <h3>Новые машины</h3>
+            <p>Чистые грузовики ISUZU с тентом — удобно в любую погоду.</p>
+          </div>
+          <div class="card reveal-item">
+            <div class="icon">📋</div>
+            <h3>Удобная заявка</h3>
+            <p>Оформление через WhatsApp — без длинных созвонов и лишних вопросов.</p>
+          </div>
+          <div class="card reveal-item">
+            <div class="icon">🇮🇱</div>
+            <h3>Вся страна</h3>
+            <p>Хайфа/Север — наш базовый регион, но работаем по всему Израилю.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Reviews -->
+    <section class="section reveal" id="reviews">
+      <div class="wrap">
+        <h2 class="section-title">Отзывы клиентов</h2>
+
+        <div class="grid reviews reveal-stagger">
+          <article class="card review reveal-item">
+            <div class="review-head">
+              <div class="avatar" aria-hidden="true"><span class="initials">Е</span></div>
+              <div class="meta">
+                <div class="name">Elena S.</div>
+                <div class="date">26 января 2026</div>
+                <div class="stars">★★★★★</div>
+              </div>
+            </div>
+            <div class="text">
+              Переезд прошёл отлично. Аккуратно и быстро перевезли и мелкое, и тяжёлое.
+              Всё доставили без повреждений, помогли с расстановкой. Спасибо!
+            </div>
+          </article>
+
+          <article class="card review reveal-item">
+            <div class="review-head">
+              <div class="avatar" aria-hidden="true"><span class="initials">Е</span></div>
+              <div class="meta">
+                <div class="name">Evgeniya V.</div>
+                <div class="date">13 декабря 2025</div>
+                <div class="stars">★★★★★</div>
+              </div>
+            </div>
+            <div class="text">
+              Все сделали быстро и качественно! Я осталась довольна. Рекомендую, ребята молодцы.
+            </div>
+          </article>
+
+          <article class="card review reveal-item">
+            <div class="review-head">
+              <div class="avatar" aria-hidden="true"><span class="initials">А</span></div>
+              <div class="meta">
+                <div class="name">Anna K.</div>
+                <div class="date">2 декабря 2025</div>
+                <div class="stars">★★★★★</div>
+              </div>
+            </div>
+            <div class="text">
+              Отличный сервис. Всё было качественно и даже быстрее, чем запланировали. Очень довольна.
+            </div>
+          </article>
+        </div>
+
+        <div class="link-row">
+          <a class="link" href="https://www.facebook.com/people/Vladimir-Moving-Israel/61583372108720/?sk=reviews" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+            Все отзывы на Facebook
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Service area -->
+    <section class="section reveal" id="area">
+      <div class="wrap">
+        <h2 class="section-title">География работы</h2>
+        <div class="card area">
+          <p style="color:rgba(11,18,32,.72);font-weight:750">
+            Работаем по всей стране — от <b>Хайфы</b> до <b>Эйлата</b>!
+          </p>
+          <div class="badges reveal-stagger" aria-label="Города и районы">
+            <span class="tag reveal-item">Хайфа</span>
+            <span class="tag reveal-item">Крайот</span>
+            <span class="tag reveal-item">Нешер</span>
+            <span class="tag reveal-item">Тират-Кармель</span>
+            <span class="tag reveal-item">Акко</span>
+            <span class="tag reveal-item">Нагария</span>
+            <span class="tag reveal-item">Афула</span>
+            <span class="tag reveal-item">Назарет</span>
+            <span class="tag reveal-item">Тель-Авив</span>
+            <span class="tag reveal-item">Весь Израиль</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section reveal" id="faq">
+      <div class="wrap">
+        <h2 class="section-title">FAQ</h2>
+        <p class="sub-title">Пара вопросов, которые обычно задают перед переездом.</p>
+
+        <div class="grid faq reveal-stagger">
+          <details class="reveal-item">
+            <summary>От чего зависит цена? <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg></summary>
+            <p>Город(а), объём вещей, этаж/лифт, разборка/сборка мебели, упаковка и крупногабарит (холодильник, диван и т.п.).</p>
+          </details>
+
+          <details class="reveal-item">
+            <summary>Можно заказать только машину с водителем? <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg></summary>
+            <p>Да. Если ты сам грузишь/разгружаешь — мы предоставим машину и водителя.</p>
+          </details>
+
+          <details class="reveal-item">
+            <summary>Делаете подъём через окно? <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg></summary>
+            <p>Да, есть подъёмник (window lift). Напиши в WhatsApp этаж и что нужно поднять — уточним возможность.</p>
+          </details>
+
+          <details class="reveal-item">
+            <summary>Можно “сегодня/завтра”? <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg></summary>
+            <p>Иногда да, если есть окно. Лучше сразу написать дату и город — быстро проверим.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="section reveal" id="cta">
+      <div class="wrap">
+        <div class="card" style="padding:22px;text-align:center">
+          <h2 style="font-size:1.35rem;font-weight:950;letter-spacing:-.03em;margin-bottom:6px">Готовы к переезду?</h2>
+          <p style="color:rgba(11,18,32,.72);font-weight:650;margin-bottom:14px">
+            Напиши боту в WhatsApp — ответим быстро и предложим вариант под твой кейс.
+          </p>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <a class="btn primary" href="#quote">Получить оценку</a>
+            <a class="btn" href="tel:+972526707625">Позвонить</a>
+          </div>
+        </div>
+
+        <div class="footer">
+          © 2025–2026 Moving Center Israel • Хайфа, Израиль • <a href="tel:+972526707625">052-670-76-25</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Sticky bottom CTA -->
+  <div class="sticky" role="region" aria-label="Быстрые действия">
+    <div class="row">
+      <a class="btn primary" id="waSticky" href="https://wa.me/972526707625?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5!%20%D0%A5%D0%BE%D1%87%D1%83%20%D1%83%D0%B7%D0%BD%D0%B0%D1%82%D1%8C%20%D1%81%D1%82%D0%BE%D0%B8%D0%BC%D0%BE%D1%81%D1%82%D1%8C%20%D0%BF%D0%B5%D1%80%D0%B5%D0%B5%D0%B7%D0%B4%D0%B0" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+        Написать в WhatsApp
+      </a>
+      <a class="btn" href="tel:+972526707625">
+        <svg viewBox="0 0 24 24"><path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.46.57 3.58a1 1 0 01-.24 1.01l-2.2 2.2z"/></svg>
+        Позвонить
+      </a>
+    </div>
+  </div>
+
+  <script>
+    // Reveal on scroll
+    (function(){
+      var io = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(e.isIntersecting){
+            e.target.classList.add('visible');
+            io.unobserve(e.target);
+          }
+        });
+      },{threshold:0.12,rootMargin:'0px 0px -40px 0px'});
+
+      document.querySelectorAll('.reveal,.reveal-stagger').forEach(function(el){ io.observe(el); });
+    })();
+
+    // Build WhatsApp message from form
+    (function(){
+      var form = document.getElementById('quoteForm');
+      if(!form) return;
+
+      function enc(s){ return encodeURIComponent((s || '').trim()); }
+
+      form.addEventListener('submit', function(ev){
+        ev.preventDefault();
+        var from = form.querySelector('#qFrom').value;
+        var to = form.querySelector('#qTo').value;
+        var type = form.querySelector('#qType').value;
+        var when = form.querySelector('#qWhen').value;
+        var notes = form.querySelector('#qNotes').value;
+
+        var lines = [];
+        lines.push('Здравствуйте! Хочу узнать стоимость переезда.');
+        if(type) lines.push('Тип: ' + type);
+        if(from) lines.push('Откуда: ' + from);
+        if(to) lines.push('Куда: ' + to);
+        if(when) lines.push('Дата: ' + when);
+        if(notes) lines.push('Детали: ' + notes);
+
+        var text = enc(lines.join('\n'));
+        var url = 'https://wa.me/972526707625?text=' + text;
+
+        // Update CTAs too (so consistent if user then taps sticky/top)
+        var waTop = document.getElementById('waTop');
+        var waSticky = document.getElementById('waSticky');
+        if(waTop) waTop.href = url;
+        if(waSticky) waSticky.href = url;
+
+        window.open(url, '_blank', 'noopener');
+      });
+    })();
+
+    // Photo carousel
+    (function(){
+      var track = document.getElementById('carouselTrack');
+      var dots  = document.querySelectorAll('#carouselDots .carousel-dot');
+      var slides= document.querySelectorAll('.carousel-slide');
+      var prev  = document.querySelector('.carousel-prev');
+      var next  = document.querySelector('.carousel-next');
+      if(!track || !slides.length) return;
+
+      var idx = 0, total = slides.length, timer;
+
+      function go(n){
+        idx = (n + total) % total;
+        track.style.transform = 'translateX(-' + (idx * 100) + '%)';
+        dots.forEach(function(d,i){ d.classList.toggle('active', i===idx); });
+        slides.forEach(function(s,i){ s.classList.toggle('active', i===idx); });
+      }
+      function advance(){ go(idx + 1); }
+      function startAuto(){ timer = setInterval(advance, 4500); }
+      function resetAuto(){ clearInterval(timer); startAuto(); }
+
+      prev.addEventListener('click', function(){ go(idx - 1); resetAuto(); });
+      next.addEventListener('click', function(){ go(idx + 1); resetAuto(); });
+      dots.forEach(function(d,i){
+        d.addEventListener('click', function(){ go(i); resetAuto(); });
+      });
+
+      // Touch/swipe support
+      var x0 = null;
+      track.addEventListener('touchstart', function(e){ x0 = e.touches[0].clientX; }, {passive:true});
+      track.addEventListener('touchend', function(e){
+        if(x0 === null) return;
+        var dx = e.changedTouches[0].clientX - x0;
+        if(Math.abs(dx) > 40){ dx < 0 ? go(idx+1) : go(idx-1); resetAuto(); }
+        x0 = null;
+      }, {passive:true});
+
+      startAuto();
+    })();
+  </script>
+
+</body>
+</html>

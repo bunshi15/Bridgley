@@ -1,0 +1,182 @@
+version: "3.9"
+
+# =============================================================================
+# Production Runtime Model
+# =============================================================================
+# Single image, separate runtime roles via RUN_MODE:
+#   web    — HTTP API only (scalable, no background tasks)
+#   worker — DB job processor only (scalable with queue locking)
+#   poller — Telegram polling only (single instance per bot token!)
+#
+# See production_runtime_model.md for full documentation.
+# =============================================================================
+
+x-common-env: &common-env
+  APP_ENV: "prod"
+  TENANT_ID: ${TENANT_ID:-investor_01}
+
+  # DB
+  DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+
+  # Security
+  ADMIN_TOKEN: ${ADMIN_TOKEN:?ADMIN_TOKEN is required}
+  REQUIRE_WEBHOOK_VALIDATION: "true"
+  RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-60}
+  ENABLE_REQUEST_LOGGING: ${ENABLE_REQUEST_LOGGING:-true}
+  ADMIN_HOST: ${ADMIN_HOST:-bot-admin.example.com}
+  ADMIN_AUTH_MODE: ${ADMIN_AUTH_MODE:-both}
+  METRICS_TOKEN: ${METRICS_TOKEN:-}
+
+  # Twilio
+  TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:?TWILIO_ACCOUNT_SID is required}
+  TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:?TWILIO_AUTH_TOKEN is required}
+  TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:?TWILIO_PHONE_NUMBER is required}
+  TWILIO_WEBHOOK_URL: ${TWILIO_WEBHOOK_URL:?TWILIO_WEBHOOK_URL is required}
+  OPERATOR_WHATSAPP: ${OPERATOR_WHATSAPP:-}
+
+  # Operator Notifications
+  OPERATOR_NOTIFICATIONS_ENABLED: ${OPERATOR_NOTIFICATIONS_ENABLED:-true}
+  OPERATOR_NOTIFICATION_CHANNEL: ${OPERATOR_NOTIFICATION_CHANNEL:-whatsapp}
+
+  # Telegram (if channel=telegram)
+  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+  TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+
+  # S3/Bucket Storage (required for prod)
+  S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:?S3_ENDPOINT_URL is required}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?S3_SECRET_KEY is required}
+  S3_BUCKET_NAME: ${S3_BUCKET_NAME:?S3_BUCKET_NAME is required}
+  S3_REGION: ${S3_REGION:-auto}
+  S3_PUBLIC_URL: ${S3_PUBLIC_URL}
+
+  # Multi-tenant
+  TENANT_ENCRYPTION_KEY: ${TENANT_ENCRYPTION_KEY:-}
+
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: stage0
+      POSTGRES_USER: stage0
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks: [preprod]
+
+  migrate:
+    image: ${STAGE0_IMAGE:-stage0-bot:latest}
+    depends_on: [db]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      APP_ENV: "prod"
+    command: ["python", "-m", "app.infra.migrate"]
+    restart: "no"
+    networks: [preprod]
+
+  # -------------------------------------------------------------------------
+  # WEB — HTTP API only (safe to scale with multiple replicas)
+  # -------------------------------------------------------------------------
+  web:
+    image: ${STAGE0_IMAGE:-stage0-bot:latest}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_started
+    environment:
+      <<: *common-env
+      RUN_MODE: "web"
+      JOB_WORKER_ENABLED: "false"
+    ports:
+      - "${PORT:-8098}:8098"
+    restart: unless-stopped
+    networks: [preprod]
+
+  # -------------------------------------------------------------------------
+  # WORKER — DB job processor (safe to scale; queue uses FOR UPDATE SKIP LOCKED)
+  # -------------------------------------------------------------------------
+  worker:
+    image: ${STAGE0_IMAGE:-stage0-bot:latest}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_started
+    environment:
+      <<: *common-env
+      RUN_MODE: "worker"
+      JOB_WORKER_ENABLED: "true"
+      JOB_WORKER_POLL_INTERVAL: ${JOB_WORKER_POLL_INTERVAL:-1.0}
+      JOB_WORKER_BATCH_SIZE: ${JOB_WORKER_BATCH_SIZE:-5}
+      OUTBOUND_MESSAGES_PER_SECOND: ${OUTBOUND_MESSAGES_PER_SECOND:-1.0}
+      OUTBOUND_MAX_RETRIES: ${OUTBOUND_MAX_RETRIES:-3}
+      OUTBOUND_BASE_RETRY_DELAY: ${OUTBOUND_BASE_RETRY_DELAY:-5.0}
+    restart: unless-stopped
+    networks: [preprod]
+
+  # -------------------------------------------------------------------------
+  # POLLER — Telegram long-polling (DO NOT scale — max 1 per bot token!)
+  # Uncomment if using Telegram as channel provider.
+  # -------------------------------------------------------------------------
+  # poller:
+  #   image: stage0-bot:preprod
+  #   depends_on:
+  #     migrate:
+  #       condition: service_completed_successfully
+  #     db:
+  #       condition: service_started
+  #   environment:
+  #     <<: *common-env
+  #     RUN_MODE: "poller"
+  #     JOB_WORKER_ENABLED: "false"
+  #     CHANNEL_PROVIDER: "telegram"
+  #     TELEGRAM_CHANNEL_BOT_TOKEN: ${TELEGRAM_CHANNEL_BOT_TOKEN:?required for poller}
+  #     TELEGRAM_CHANNEL_MODE: "polling"
+  #   restart: unless-stopped
+  #   deploy:
+  #     replicas: 1    # NEVER more than 1
+  #   networks: [preprod]
+
+  # -------------------------------------------------------------------------
+  # BACKUP — one-shot pg_dump (run manually or via cron)
+  # Usage: docker compose -f docker-compose.prod.example.yml run --rm backup
+  # -------------------------------------------------------------------------
+  backup:
+    image: postgres:17
+    depends_on: [db]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      BACKUP_RETAIN_DAYS: ${BACKUP_RETAIN_DAYS:-30}
+    volumes:
+      - backups:/backups
+    entrypoint: >
+      sh -c '
+        STAMP=$$(date +%Y%m%d_%H%M%S) &&
+        FILE=/backups/stage0_$${STAMP}.dump &&
+        echo "=== Backup started: $$FILE ===" &&
+        pg_dump "$$DATABASE_URL" --format=custom --no-owner --no-privileges --file="$$FILE" &&
+        echo "=== Backup complete: $$(du -h $$FILE | cut -f1) ===" &&
+        find /backups -name "stage0_*" -mtime +$$BACKUP_RETAIN_DAYS -delete -print
+      '
+    restart: "no"
+    networks: [preprod]
+    profiles: [tools]
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN:?CF_TUNNEL_TOKEN is required}
+    restart: unless-stopped
+    depends_on: [web]
+    networks: [preprod]
+
+volumes:
+  pgdata:
+  backups:
+
+networks:
+  preprod:
+    driver: bridge

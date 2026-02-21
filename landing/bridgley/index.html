@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- SEO / Social -->
+  <title>Bridgley — Customer Request Handling Software for Service Businesses</title>
+  <meta name="description" content="Bridgley is a software product that helps licensed service businesses handle inbound customer requests through structured WhatsApp conversations." />
+  <meta property="og:title" content="Bridgley — Customer Request Handling Software" />
+  <meta property="og:description" content="Bridgley provides structured customer intake solutions for licensed service businesses. The system processes customer-initiated conversations only." />
+  <meta property="og:url" content="https://666s.dev" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI2MzAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojNjY3ZWVhIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojNzY0YmEyIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3QgZmlsbD0idXJsKCNnKSIgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjMwIi8+PHRleHQgeD0iNjAwIiB5PSIzMTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI3MiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5CcmlkZ2xleTwvdGV4dD48L3N2Zz4=" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <style>
+    /* ===== Animation baseline ===== */
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#000;color:#fff;overflow-x:hidden}
+    canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0}
+
+    /* ===== Theme ===== */
+    :root{
+      --bg:#0f1115;
+      --card:#151a22;
+      --text:#e6e6e6;
+      --muted:#9aa0a6;
+      --accent:#6cf;
+      --accent2:#764ba2;
+      --grad:linear-gradient(135deg,#667eea,#764ba2);
+      --border:rgba(255,255,255,0.10);
+    }
+
+    body{
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    .container{
+      position:relative;
+      z-index:1;
+      max-width:980px;
+      margin:96px auto 80px;
+      padding:24px;
+      text-align:left;
+    }
+
+    /* Headings */
+    h1{
+      font-size:clamp(2.2rem,4.5vw,3.6rem);
+      margin:0 0 12px;
+      background:var(--grad);
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      letter-spacing:-0.02em;
+    }
+    h2{
+      margin:0 0 12px;
+      font-size:1.45rem;
+      letter-spacing:-0.01em;
+    }
+    h3{
+      margin:0 0 10px;
+      font-size:1.05rem;
+      letter-spacing:-0.01em;
+      color:var(--text);
+      opacity:0.95;
+    }
+    p{
+      color:var(--muted);
+      line-height:1.7;
+      margin:0 0 14px;
+      font-size:1.02rem;
+    }
+
+    /* Sections */
+    .section{
+      background:var(--card);
+      padding:22px 22px;
+      border-radius:14px;
+      margin-top:18px;
+      border:1px solid var(--border);
+      backdrop-filter: blur(2px);
+    }
+
+    /* Links */
+    a{color:var(--accent);text-decoration:none}
+    a:hover{text-decoration:underline}
+
+    /* ===== Sticky Menu ===== */
+    .topbar{
+      position:fixed;
+      top:0; left:0; right:0;
+      z-index:5;
+      background:rgba(15,17,21,0.78);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid rgba(255,255,255,0.08);
+    }
+    .topbar-inner{
+      max-width:980px;
+      margin:0 auto;
+      padding:10px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width: 180px;
+    }
+    .brand-badge{
+      width:10px;height:10px;border-radius:99px;background:var(--grad);
+      box-shadow: 0 0 18px rgba(102,126,234,0.35);
+    }
+    .brand-name{
+      font-weight:650;
+      letter-spacing:0.02em;
+      color:var(--text);
+      opacity:0.95;
+      font-size:0.95rem;
+      white-space:nowrap;
+    }
+    .nav{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .nav a{
+      font-size:0.88rem;
+      padding:7px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.10);
+      color:rgba(230,230,230,0.88);
+      text-decoration:none;
+    }
+    .nav a:hover{
+      border-color:rgba(102,126,234,0.45);
+      background:rgba(102,126,234,0.10);
+      color:rgba(255,255,255,0.95);
+      text-decoration:none;
+    }
+
+    /* Anchor offset for sticky header */
+    .anchor{
+      scroll-margin-top: 88px;
+    }
+
+    /* Hero row */
+    .hero{
+      display:grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap:18px;
+      align-items:start;
+      margin-bottom: 8px;
+    }
+    @media (max-width: 860px){
+      .hero{grid-template-columns: 1fr;}
+      .brand{min-width:auto;}
+      .nav{justify-content:flex-start;}
+    }
+
+    .hero-card{
+      background:rgba(21,26,34,0.72);
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius:16px;
+      padding:20px 22px;
+    }
+    .hero-sub{
+      font-size:1.08rem;
+      margin:0;
+    }
+    .pill-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+    .pill{
+      font-size:0.86rem;
+      color:rgba(230,230,230,0.85);
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(255,255,255,0.03);
+    }
+
+    /* Grid layout */
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+    }
+    @media (max-width: 760px){
+      .grid{grid-template-columns: 1fr;}
+    }
+    .mini{
+      padding:16px 16px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.10);
+      background:rgba(0,0,0,0.10);
+    }
+    .muted{
+      color:var(--muted);
+    }
+
+    /* Business info block */
+    .biz-info{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:8px 24px;
+      font-size:0.96rem;
+      margin-top:12px;
+    }
+    .biz-info dt{color:var(--muted);font-weight:400;margin:0;padding:4px 0;}
+    .biz-info dd{color:var(--text);margin:0;padding:4px 0;}
+    @media (max-width: 600px){
+      .biz-info{grid-template-columns: 1fr;}
+    }
+
+    /* Policy sub-sections */
+    .policy-section{margin-top:16px;}
+    .policy-section h3{margin-bottom:6px;}
+    .policy-section ul{margin:0 0 10px;padding-left:20px;color:var(--muted);line-height:1.7;font-size:0.98rem;}
+    .policy-section li{margin-bottom:4px;}
+
+    /* Footer */
+    .footer{
+      margin-top:44px;
+      padding-top:20px;
+      border-top:1px solid rgba(255,255,255,0.10);
+      font-size:0.92rem;
+      color:rgba(180,180,180,0.55);
+      text-align:center;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="c"></canvas>
+
+  <!-- Top Navigation -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-badge"></div>
+        <div class="brand-name">Bridgley</div>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <a href="#about">About</a>
+        <a href="#product">Product</a>
+        <a href="#how">How It Works</a>
+        <a href="#compliance">Compliance</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#terms">Terms</a>
+        <a href="#contact">Contact</a>
+      </nav>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-card">
+        <h1>Bridgley</h1>
+        <p class="hero-sub">
+          Bridgley is a software product that helps licensed service businesses handle inbound customer requests
+          through structured WhatsApp conversations. The system processes customer-initiated conversations only
+          and does not support bulk messaging or unsolicited outreach.
+        </p>
+        <div class="pill-row">
+          <div class="pill">Customer request handling</div>
+          <div class="pill">Structured intake</div>
+          <div class="pill">Photo &amp; location collection</div>
+          <div class="pill">Operator coordination</div>
+        </div>
+      </div>
+
+      <div class="hero-card">
+        <h3>Business Information</h3>
+        <dl class="biz-info">
+          <dt>Legal Name</dt>
+          <dd>Bridgley</dd>
+          <dt>Business Type</dt>
+          <dd>Software Provider</dd>
+          <dt>Location</dt>
+          <dd>Israel</dd>
+          <dt>Website</dt>
+          <dd><a href="https://666s.dev">666s.dev</a></dd>
+          <dt>Contact Email</dt>
+          <dd><a href="mailto:contact@666s.dev">contact@666s.dev</a></dd>
+          <dt>Support Email</dt>
+          <dd><a href="mailto:support@666s.dev">support@666s.dev</a></dd>
+          <dt>Privacy Email</dt>
+          <dd><a href="mailto:privacy@666s.dev">privacy@666s.dev</a></dd>
+        </dl>
+      </div>
+    </div>
+
+    <!-- About -->
+    <div id="about" class="section anchor">
+      <h2>About Bridgley</h2>
+      <p>
+        Bridgley is developed and operated from Israel. We provide a software product that enables
+        licensed service businesses to handle inbound customer requests in a structured, efficient way.
+        Our focus is on operational workflow support and service coordination for businesses
+        that receive customer inquiries through WhatsApp.
+      </p>
+      <div class="grid">
+        <div class="mini">
+          <h3>What we do</h3>
+          <p class="muted">
+            We build customer request handling software. Bridgley collects structured service requests
+            from customers who initiate contact, organizes the information, and delivers it to business
+            operators for follow-up.
+          </p>
+        </div>
+        <div class="mini">
+          <h3>Intended clients</h3>
+          <p class="muted">
+            Licensed moving companies, local service businesses handling inbound requests,
+            and operational teams that coordinate service delivery with their customers.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product -->
+    <div id="product" class="section anchor">
+      <h2>Product</h2>
+      <p>
+        Bridgley helps service businesses collect and organize customer requests that arrive through WhatsApp.
+        When a customer initiates a conversation, the system guides them through a structured intake process,
+        collects relevant details (including photos and location when needed), and delivers
+        a formatted summary to the business operator.
+      </p>
+      <div class="grid">
+        <div class="mini">
+          <h3>Structured intake</h3>
+          <p class="muted">
+            Guides the customer through relevant questions to collect service details,
+            photos, and location information in an organized format.
+          </p>
+        </div>
+        <div class="mini">
+          <h3>Operator coordination</h3>
+          <p class="muted">
+            Delivers a clear, formatted request summary to the business operator
+            so they can respond quickly and accurately.
+          </p>
+        </div>
+        <div class="mini">
+          <h3>Customer-initiated only</h3>
+          <p class="muted">
+            The system responds only to customers who initiate contact.
+            It does not send unsolicited messages or perform outbound outreach of any kind.
+          </p>
+        </div>
+        <div class="mini">
+          <h3>Service business focus</h3>
+          <p class="muted">
+            Designed for licensed businesses that handle real customer service requests,
+            such as moving companies and home service providers.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- How it works -->
+    <div id="how" class="section anchor">
+      <h2>How It Works</h2>
+      <p>
+        Bridgley follows a simple, predictable flow designed for real-world service operations.
+        All conversations are initiated by the customer.
+      </p>
+      <div class="grid">
+        <div class="mini">
+          <h3>1. Customer initiates contact</h3>
+          <p class="muted">
+            A customer messages the business on WhatsApp to request a service (for example, a moving quote).
+            Bridgley only responds to customer-initiated messages.
+          </p>
+        </div>
+        <div class="mini">
+          <h3>2. Structured request collection</h3>
+          <p class="muted">
+            The system asks targeted questions and collects relevant details, including
+            photos and location data when needed for accurate service delivery.
+          </p>
+        </div>
+        <div class="mini">
+          <h3>3. Request summary</h3>
+          <p class="muted">
+            The collected information is organized into a clear, operator-friendly summary
+            with all the details needed to respond to the customer.
+          </p>
+        </div>
+        <div class="mini">
+          <h3>4. Operator notification</h3>
+          <p class="muted">
+            The business operator receives the formatted request and can follow up
+            with the customer directly to confirm details and schedule the service.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compliance / Use of WhatsApp -->
+    <div id="compliance" class="section anchor">
+      <h2>Use of WhatsApp</h2>
+      <p>
+        Bridgley is designed to comply with WhatsApp Business Policy and Meta Platform Terms.
+        We take messaging compliance seriously and enforce the following policies:
+      </p>
+      <div class="grid">
+        <div class="mini">
+          <h3>Customer-initiated conversations only</h3>
+          <p class="muted">
+            The system processes conversations that are started by the customer.
+            Businesses respond only to users who initiate contact.
+            Bridgley does not initiate outbound conversations with end users.
+          </p>
+        </div>
+        <div class="mini">
+          <h3>No bulk messaging</h3>
+          <p class="muted">
+            Bridgley does not provide bulk messaging capabilities.
+            There are no broadcast features, no marketing blasts, and no mass outreach tools.
+          </p>
+        </div>
+        <div class="mini">
+          <h3>No unsolicited outreach</h3>
+          <p class="muted">
+            The system does not send unsolicited messages, promotional content,
+            or marketing communications to end users.
+          </p>
+        </div>
+        <div class="mini">
+          <h3>Lawful use requirement</h3>
+          <p class="muted">
+            Businesses using Bridgley are required to comply with all applicable laws,
+            WhatsApp Business Policy, and Meta Platform Terms.
+            Misuse results in service termination.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Privacy Policy -->
+    <div id="privacy" class="section anchor">
+      <h2>Privacy Policy</h2>
+      <p>
+        Bridgley collects and processes personal data solely to provide its customer request handling services.
+        This policy explains what data we collect, why, and how it is handled.
+      </p>
+
+      <div class="policy-section">
+        <h3>Data We Collect</h3>
+        <ul>
+          <li><strong>Phone number</strong> — provided by the messaging platform when the customer initiates contact</li>
+          <li><strong>Message content</strong> — text messages exchanged during the service request conversation</li>
+          <li><strong>Media files</strong> — photos uploaded by the customer to describe their service needs</li>
+          <li><strong>Location data</strong> — geographic coordinates or addresses shared by the customer for service delivery</li>
+          <li><strong>Service request details</strong> — structured information collected during the intake process (dates, preferences, special requirements)</li>
+        </ul>
+      </div>
+
+      <div class="policy-section">
+        <h3>Why We Collect Data</h3>
+        <ul>
+          <li>To process and fulfill the customer's service request</li>
+          <li>To generate a structured summary for the business operator</li>
+          <li>To enable the business to respond accurately and promptly</li>
+          <li>To maintain service quality and resolve operational issues</li>
+        </ul>
+      </div>
+
+      <div class="policy-section">
+        <h3>Data Retention</h3>
+        <p class="muted">
+          Personal data is retained only for as long as necessary to fulfill the service request
+          and for a reasonable period afterward for operational and legal compliance purposes.
+          Completed request data is routinely purged in accordance with our retention schedule.
+        </p>
+      </div>
+
+      <div class="policy-section">
+        <h3>Data Sharing</h3>
+        <p class="muted">
+          We do not sell personal data. Data is shared only with:
+        </p>
+        <ul>
+          <li>The business operator handling the customer's service request</li>
+          <li>Infrastructure providers necessary to operate the service (hosting, messaging delivery)</li>
+        </ul>
+        <p class="muted">
+          We do not share data with advertisers, data brokers, or unrelated third parties.
+        </p>
+      </div>
+
+      <div class="policy-section">
+        <h3>Data Deletion Requests</h3>
+        <p class="muted">
+          You may request deletion of your personal data at any time by contacting us at
+          <a href="mailto:privacy@666s.dev">privacy@666s.dev</a>.
+          Please include the phone number used in the conversation (in international format)
+          and the approximate date of your request. We will process deletion requests
+          within 30 days.
+        </p>
+      </div>
+
+      <div class="policy-section">
+        <h3>Data Protection Contact</h3>
+        <p class="muted">
+          For any privacy-related questions or concerns, contact us at:
+          <a href="mailto:privacy@666s.dev">privacy@666s.dev</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- Terms of Service -->
+    <div id="terms" class="section anchor">
+      <h2>Terms of Service</h2>
+      <p>
+        These terms govern the use of Bridgley by both end users (customers interacting with the system)
+        and client businesses (service providers using Bridgley to handle customer requests).
+      </p>
+
+      <div class="policy-section">
+        <h3>Lawful Use</h3>
+        <p class="muted">
+          All use of Bridgley must comply with applicable laws and regulations.
+          Client businesses are responsible for ensuring that their use of the service
+          complies with all relevant laws in their jurisdiction.
+        </p>
+      </div>
+
+      <div class="policy-section">
+        <h3>Prohibited Use</h3>
+        <p class="muted">The following activities are strictly prohibited:</p>
+        <ul>
+          <li>Sending spam, unsolicited messages, or bulk communications</li>
+          <li>Using the system for marketing blasts or promotional outreach</li>
+          <li>Harassment, deception, or fraudulent activity</li>
+          <li>Any activity that violates WhatsApp Business Policy or Meta Platform Terms</li>
+          <li>Collecting or processing personal data in ways not described in our Privacy Policy</li>
+          <li>Reselling, sublicensing, or redistributing access to the service without authorization</li>
+        </ul>
+      </div>
+
+      <div class="policy-section">
+        <h3>Client Business Responsibilities</h3>
+        <p class="muted">
+          Businesses using Bridgley are responsible for:
+        </p>
+        <ul>
+          <li>Ensuring they hold appropriate licenses for their business operations</li>
+          <li>Complying with messaging platform policies (WhatsApp Business Policy, Meta Platform Terms)</li>
+          <li>Responding to customer requests in a timely and professional manner</li>
+          <li>Handling personal data in accordance with applicable data protection laws</li>
+        </ul>
+      </div>
+
+      <div class="policy-section">
+        <h3>Compliance with Messaging Platform Policies</h3>
+        <p class="muted">
+          All users and client businesses must comply with the policies of the messaging platforms
+          used by Bridgley, including but not limited to WhatsApp Business Policy and
+          Meta Platform Terms of Service. Violation of these policies may result in
+          immediate suspension or termination of access to Bridgley.
+        </p>
+      </div>
+
+      <div class="policy-section">
+        <h3>Limitation of Liability</h3>
+        <p class="muted">
+          Bridgley is provided "as is" and "as available" without warranties of any kind,
+          either express or implied, to the maximum extent permitted by applicable law.
+          We do not guarantee uninterrupted or error-free operation of the service.
+          In no event shall Bridgley or its operators be liable for any indirect, incidental,
+          special, consequential, or punitive damages arising from the use of the service.
+        </p>
+      </div>
+
+      <div class="policy-section">
+        <h3>Changes to Terms</h3>
+        <p class="muted">
+          We may update these terms from time to time. Continued use of the service
+          after changes constitutes acceptance of the updated terms.
+          Material changes will be communicated through the service or via email.
+        </p>
+      </div>
+    </div>
+
+    <!-- Contact -->
+    <div id="contact" class="section anchor">
+      <h2>Contact</h2>
+      <p>
+        For business inquiries, support, or compliance-related questions:
+      </p>
+      <dl class="biz-info">
+        <dt>Business Name</dt>
+        <dd>Bridgley</dd>
+        <dt>Location</dt>
+        <dd>Israel</dd>
+        <dt>General Inquiries</dt>
+        <dd><a href="mailto:contact@666s.dev">contact@666s.dev</a></dd>
+        <dt>Support</dt>
+        <dd><a href="mailto:support@666s.dev">support@666s.dev</a></dd>
+        <dt>Privacy &amp; Data Requests</dt>
+        <dd><a href="mailto:privacy@666s.dev">privacy@666s.dev</a></dd>
+        <dt>Website</dt>
+        <dd><a href="https://666s.dev">https://666s.dev</a></dd>
+      </dl>
+      <p class="muted" style="margin-top:14px;">
+        If you are contacting us regarding data removal, please include the phone number
+        used in the conversation (in international format) and the approximate date of your
+        interaction to help us locate the relevant records.
+      </p>
+    </div>
+
+    <div class="footer">
+      &copy; 2025 Bridgley &bull; 666s.dev &bull; Israel &bull; <a href="mailto:contact@666s.dev">contact@666s.dev</a><br>
+      <a href="#privacy">Privacy Policy</a> &bull; <a href="#terms">Terms of Service</a> &bull; <a href="#contact">Contact</a>
+    </div>
+
+    <!-- Background animation -->
+    <script nonce="">
+      const c=document.getElementById('c'),ctx=c.getContext('2d');let w,h,particles=[];
+      function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight}
+      function Particle(){this.x=Math.random()*w;this.y=Math.random()*h;this.vx=(Math.random()-0.5)*0.5;this.vy=(Math.random()-0.5)*0.5;this.radius=Math.random()*2+1;this.opacity=Math.random()*0.5+0.2}
+      Particle.prototype.update=function(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>w)this.vx*=-1;if(this.y<0||this.y>h)this.vy*=-1};
+      Particle.prototype.draw=function(){ctx.beginPath();ctx.arc(this.x,this.y,this.radius,0,Math.PI*2);ctx.fillStyle=`rgba(102,126,234,${this.opacity})`;ctx.fill()};
+      function init(){resize();particles=[];for(let i=0;i<100;i++){particles.push(new Particle())}}
+      function animate(){ctx.fillStyle='rgba(0,0,0,0.05)';ctx.fillRect(0,0,w,h);particles.forEach(p=>{p.update();p.draw()});requestAnimationFrame(animate)}
+      window.addEventListener('resize',resize);init();animate();
+    </script>
+  </div>
+</body>
+</html>

@@ -1,0 +1,826 @@
+{
+	"info": {
+		"name": "Stage0 Bot - Async Migration",
+		"description": "Complete API testing for Stage0 Bot with async asyncpg implementation",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_postman_id": "stage0-bot-async-2026"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8099",
+			"type": "string"
+		},
+		{
+			"key": "admin_token",
+			"value": "your-admin-token-here",
+			"type": "string"
+		},
+		{
+			"key": "test_chat_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_lead_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health & Status",
+			"item": [
+				{
+					"name": "Basic Health Check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is healthy\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.eql(\"healthy\");",
+									"});",
+									"",
+									"pm.test(\"Response time is less than 50ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(50);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						}
+					}
+				},
+				{
+					"name": "Readiness Check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Database is ready\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.eql(\"healthy\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/ready",
+							"host": ["{{base_url}}"],
+							"path": ["ready"]
+						}
+					}
+				},
+				{
+					"name": "Detailed Health Check (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Has checks property\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('checks');",
+									"});",
+									"",
+									"pm.test(\"Database check exists\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.checks).to.have.property('database');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Admin-Token",
+								"value": "{{admin_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/health/detailed",
+							"host": ["{{base_url}}"],
+							"path": ["health", "detailed"]
+						}
+					}
+				},
+				{
+					"name": "Metrics (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Has counters and histograms\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('counters');",
+									"    pm.expect(jsonData).to.have.property('histograms');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Admin-Token",
+								"value": "{{admin_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/metrics",
+							"host": ["{{base_url}}"],
+							"path": ["metrics"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Complete Conversation Flow",
+			"item": [
+				{
+					"name": "1. Start Conversation (Greeting)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate unique chat_id for this test run",
+									"const timestamp = Date.now();",
+									"pm.collectionVariables.set(\"test_chat_id\", `test-${timestamp}`);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response time is less than 100ms (async benefit)\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(100);",
+									"});",
+									"",
+									"pm.test(\"Step is ask_name\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.step).to.eql(\"ask_name\");",
+									"});",
+									"",
+									"pm.test(\"Reply asks for name\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.reply).to.include(\"name\");",
+									"});",
+									"",
+									"pm.test(\"Lead ID is generated\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.lead_id).to.be.a('string');",
+									"    pm.collectionVariables.set(\"test_lead_id\", jsonData.lead_id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chat_id\": \"{{test_chat_id}}\",\n    \"text\": \"Hello\",\n    \"message_id\": \"msg-1\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/dev/chat",
+							"host": ["{{base_url}}"],
+							"path": ["dev", "chat"]
+						}
+					}
+				},
+				{
+					"name": "2. Provide Name",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Step is ask_phone\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.step).to.eql(\"ask_phone\");",
+									"});",
+									"",
+									"pm.test(\"Reply asks for phone\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.reply).to.include(\"phone\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chat_id\": \"{{test_chat_id}}\",\n    \"text\": \"John Doe\",\n    \"message_id\": \"msg-2\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/dev/chat",
+							"host": ["{{base_url}}"],
+							"path": ["dev", "chat"]
+						}
+					}
+				},
+				{
+					"name": "3. Provide Phone",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Step is ask_when\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.step).to.eql(\"ask_when\");",
+									"});",
+									"",
+									"pm.test(\"Reply asks for move date\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.reply).to.include(\"when\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chat_id\": \"{{test_chat_id}}\",\n    \"text\": \"555-1234\",\n    \"message_id\": \"msg-3\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/dev/chat",
+							"host": ["{{base_url}}"],
+							"path": ["dev", "chat"]
+						}
+					}
+				},
+				{
+					"name": "4. Provide Move Date",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Step is ask_from\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.step).to.eql(\"ask_from\");",
+									"});",
+									"",
+									"pm.test(\"Reply asks for from location\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.reply).to.include(\"from\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chat_id\": \"{{test_chat_id}}\",\n    \"text\": \"next week\",\n    \"message_id\": \"msg-4\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/dev/chat",
+							"host": ["{{base_url}}"],
+							"path": ["dev", "chat"]
+						}
+					}
+				},
+				{
+					"name": "5. Provide From Location",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Step is ask_to\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.step).to.eql(\"ask_to\");",
+									"});",
+									"",
+									"pm.test(\"Reply asks for to location\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.reply).to.include(\"to\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chat_id\": \"{{test_chat_id}}\",\n    \"text\": \"New York\",\n    \"message_id\": \"msg-5\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/dev/chat",
+							"host": ["{{base_url}}"],
+							"path": ["dev", "chat"]
+						}
+					}
+				},
+				{
+					"name": "6. Provide To Location (Complete)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Step is done\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.step).to.eql(\"done\");",
+									"});",
+									"",
+									"pm.test(\"Reply confirms completion\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.reply).to.include(\"contact\");",
+									"});",
+									"",
+									"pm.test(\"Lead is finalized (session should be deleted)\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.step).to.eql(\"done\");",
+									"    console.log(\"Lead ID:\", jsonData.lead_id);",
+									"    console.log(\"Check database: SELECT * FROM leads WHERE lead_id = '\" + jsonData.lead_id + \"'\");",
+									"    console.log(\"Session should be deleted: SELECT * FROM sessions WHERE chat_id = '{{test_chat_id}}'\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chat_id\": \"{{test_chat_id}}\",\n    \"text\": \"Boston\",\n    \"message_id\": \"msg-6\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/dev/chat",
+							"host": ["{{base_url}}"],
+							"path": ["dev", "chat"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Idempotency Tests",
+			"item": [
+				{
+					"name": "Send Message Once",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.collectionVariables.set(\"idempotency_chat_id\", `idem-${Date.now()}`);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Message processed\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.reply).to.not.include(\"duplicate\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chat_id\": \"{{idempotency_chat_id}}\",\n    \"text\": \"Hello\",\n    \"message_id\": \"dup-msg-1\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/dev/chat",
+							"host": ["{{base_url}}"],
+							"path": ["dev", "chat"]
+						}
+					}
+				},
+				{
+					"name": "Send Same Message Again (Duplicate)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Duplicate detected\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.reply).to.include(\"duplicate\");",
+									"});",
+									"",
+									"pm.test(\"Response is immediate (async idempotency check)\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(50);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chat_id\": \"{{idempotency_chat_id}}\",\n    \"text\": \"Hello\",\n    \"message_id\": \"dup-msg-1\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/dev/chat",
+							"host": ["{{base_url}}"],
+							"path": ["dev", "chat"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Media Handling",
+			"item": [
+				{
+					"name": "Send Media",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.collectionVariables.set(\"media_chat_id\", `media-${Date.now()}`);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Media acknowledged\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.reply).to.include(\"photo\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chat_id\": \"{{media_chat_id}}\",\n    \"message_id\": \"media-1\",\n    \"media_url\": \"https://example.com/image.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/dev/media",
+							"host": ["{{base_url}}"],
+							"path": ["dev", "media"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin Operations",
+			"item": [
+				{
+					"name": "Reset Chat Session",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// First create a session to reset",
+									"const chatId = `reset-${Date.now()}`;",
+									"pm.collectionVariables.set(\"reset_chat_id\", chatId);",
+									"",
+									"// Send initial message",
+									"pm.sendRequest({",
+									"    url: pm.collectionVariables.get(\"base_url\") + \"/dev/chat\",",
+									"    method: 'POST',",
+									"    header: {'Content-Type': 'application/json'},",
+									"    body: {",
+									"        mode: 'raw',",
+									"        raw: JSON.stringify({",
+									"            chat_id: chatId,",
+									"            text: \"Setup\",",
+									"            message_id: \"setup-msg\"",
+									"        })",
+									"    }",
+									"}, function(err, response) {",
+									"    console.log('Session created for reset test');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Reset successful\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.ok).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/dev/reset?chat_id={{reset_chat_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["dev", "reset"],
+							"query": [
+								{
+									"key": "chat_id",
+									"value": "{{reset_chat_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Cleanup Expired Sessions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Has deleted count\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('deleted');",
+									"    console.log('Deleted sessions:', jsonData.deleted);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Admin-Token",
+								"value": "{{admin_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/cleanup",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "cleanup"]
+						}
+					}
+				},
+				{
+					"name": "Reset Metrics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Metrics reset confirmed\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.ok).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Admin-Token",
+								"value": "{{admin_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/metrics/reset",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "metrics", "reset"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Performance Tests",
+			"item": [
+				{
+					"name": "Fast Response Test",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is very fast (<50ms) - Async Benefit\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(50);",
+									"    console.log('Response time:', pm.response.responseTime + 'ms');",
+									"});",
+									"",
+									"pm.test(\"No blocking detected\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(100);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"chat_id\": \"perf-{{$randomInt}}\",\n    \"text\": \"Quick test\",\n    \"message_id\": \"perf-{{$timestamp}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/dev/chat",
+							"host": ["{{base_url}}"],
+							"path": ["dev", "chat"]
+						}
+					}
+				}
+			]
+		}
+	]
+}

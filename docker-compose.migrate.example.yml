@@ -1,0 +1,97 @@
+# docker-compose.migrate.yml
+# Development environment with separate migration step
+#
+# Usage:
+#   docker compose -f docker-compose.migrate.yml up --build
+#
+# The migration runs first, then the app starts automatically.
+# Uses different ports/names than prod so both can run on same server.
+
+services:
+  # PostgreSQL database (DEV)
+  postgres:
+    image: postgres:17
+    container_name: stage0_db_dev
+    environment:
+      POSTGRES_DB: stage0_dev
+      POSTGRES_USER: stage0_dev
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-stage0_dev_pass}
+    ports:
+      - "5433:5432"  # Different port than prod (5432)
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - stage0_dev_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stage0_dev -d stage0_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Migration job (run once before starting app)
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stage0_migrate_dev
+    command: python -m app.infra.migrate
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: stage0_dev
+      PGUSER: stage0_dev
+      PGPASSWORD: ${DB_PASSWORD:-stage0_dev_pass}
+      APP_ENV: ${APP_ENV:-dev}
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - stage0_dev_network
+    restart: "no"
+
+  # Application (DEV)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stage0_app_dev
+    ports:
+      - "8098:8099"  # Different port than prod (8099)
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: stage0_dev
+      PGUSER: stage0_dev
+      PGPASSWORD: ${DB_PASSWORD:-stage0_dev_pass}
+      APP_ENV: ${APP_ENV:-dev}
+      LOG_LEVEL: INFO
+      TENANT_ID: ${TENANT_ID:-tenant_dev}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-token-min-32-characters-long}
+      REQUIRE_WEBHOOK_VALIDATION: ${REQUIRE_WEBHOOK_VALIDATION:-false}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
+      RATE_LIMIT_PER_MINUTE: 60
+      SESSION_TTL_SECONDS: 3600
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - stage0_dev_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8099/health', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+networks:
+  stage0_dev_network:
+    driver: bridge
+
+volumes:
+  postgres_data_dev:
+    driver: local
