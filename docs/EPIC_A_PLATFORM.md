@@ -1,7 +1,7 @@
 # EPIC A — Platform Isolation & Deployability
 
 **Epic ID:** A
-**Status:** In Progress
+**Status:** Done
 **Depends On:** None
 **Blocks:** EPIC B (Dispatch), EPIC C (Moving Bot v2)
 **Primary Goal:** Enable independent deployment and parallel feature development.

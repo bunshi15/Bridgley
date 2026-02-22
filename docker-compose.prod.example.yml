@@ -18,6 +18,10 @@ x-common-env: &common-env
   # DB
   DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
 
+  # Engine modularization (EPIC A)
+  ENABLED_BOTS: ${ENABLED_BOTS:-moving_bot_v1}
+  WORKER_ROLE: ${WORKER_ROLE:-all}
+
   # Security
   ADMIN_TOKEN: ${ADMIN_TOKEN:?ADMIN_TOKEN is required}
   REQUIRE_WEBHOOK_VALIDATION: "true"
@@ -97,7 +101,8 @@ services:
     networks: [preprod]
 
   # -------------------------------------------------------------------------
-  # WORKER — DB job processor (safe to scale; queue uses FOR UPDATE SKIP LOCKED)
+  # WORKER — Core job processor (safe to scale; queue uses FOR UPDATE SKIP LOCKED)
+  # Handles: outbound_reply, process_media, notify_operator
   # -------------------------------------------------------------------------
   worker:
     image: ${STAGE0_IMAGE:-stage0-bot:latest}
@@ -109,6 +114,7 @@ services:
     environment:
       <<: *common-env
       RUN_MODE: "worker"
+      WORKER_ROLE: "core"
       JOB_WORKER_ENABLED: "true"
       JOB_WORKER_POLL_INTERVAL: ${JOB_WORKER_POLL_INTERVAL:-1.0}
       JOB_WORKER_BATCH_SIZE: ${JOB_WORKER_BATCH_SIZE:-5}
@@ -117,6 +123,31 @@ services:
       OUTBOUND_BASE_RETRY_DELAY: ${OUTBOUND_BASE_RETRY_DELAY:-5.0}
     restart: unless-stopped
     networks: [preprod]
+
+  # -------------------------------------------------------------------------
+  # DISPATCH WORKER — Dispatch job processor (restartable independently)
+  # Handles: notify_crew_fallback (and future dispatch jobs)
+  # Does NOT import bot handler modules — isolated from core.
+  # Uncomment to run dispatch separately from core worker.
+  # -------------------------------------------------------------------------
+  # dispatch-worker:
+  #   image: ${STAGE0_IMAGE:-stage0-bot:latest}
+  #   depends_on:
+  #     migrate:
+  #       condition: service_completed_successfully
+  #     db:
+  #       condition: service_started
+  #   environment:
+  #     <<: *common-env
+  #     RUN_MODE: "worker"
+  #     WORKER_ROLE: "dispatch"
+  #     JOB_WORKER_ENABLED: "true"
+  #     JOB_WORKER_POLL_INTERVAL: ${JOB_WORKER_POLL_INTERVAL:-2.0}
+  #     JOB_WORKER_BATCH_SIZE: ${JOB_WORKER_BATCH_SIZE:-3}
+  #     DISPATCH_CREW_FALLBACK_ENABLED: "true"
+  #   restart: unless-stopped
+  #   networks: [preprod]
+  #   profiles: [dispatch]
 
   # -------------------------------------------------------------------------
   # POLLER — Telegram long-polling (DO NOT scale — max 1 per bot token!)

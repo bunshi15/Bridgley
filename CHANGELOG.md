@@ -10,12 +10,6 @@ Format: phases map to feature milestones, not SemVer.
 
 _Working towards v1.0.0 — production stabilization._
 
-### Changed
-- **(EPIC A1.1) Bot package layout** — moved flat `moving_bot_*.py` modules
-  into `app/core/bots/moving_bot_v1/` package with `data/` subfolder for
-  JSON files. Old flat files are now 1-line re-export shims for backward
-  compatibility. Added `example/` bot template for future bot creation.
-
 ---
 
 ## v0.9.8 — Dispatch Layer Iteration 1: Operator Fallback (Manual Copy)
@@ -40,6 +34,26 @@ _Working towards v1.0.0 — production stabilization._
   - Per-tenant override via `config_json.dispatch_crew_fallback_enabled`
 - `get_dispatch_config()` helper in tenant registry
 - Tri-language crew message labels (RU/EN/HE)
+- **EPIC A1 — Engine Modularization**: runtime-controlled handler registration
+  - `app/core/handlers/registry.py` — `register_handlers()` + `parse_enabled_bots()`
+  - `ENABLED_BOTS` env var (default: `moving_bot_v1`) — only listed bots are imported
+  - Lazy `importlib` loading eliminates side-effect imports in `handlers/__init__.py`
+  - New bots need only an entry in `_KNOWN_BOTS` map + their handler module
+- **EPIC A2 — Worker Role Separation**: job handler scoping by deployment role
+  - `WORKER_ROLE` env var (`core` | `dispatch` | `all`, default: `all`)
+  - Core handlers: `outbound_reply`, `process_media`, `notify_operator`
+  - Dispatch handlers: `notify_crew_fallback`
+  - `JobWorker.list_handlers()` for diagnostics
+- **EPIC A3 — Deployment Profiles**: docker-compose dispatch-worker service
+  - `dispatch-worker` container (commented, ready to enable)
+  - Runs with `WORKER_ROLE=dispatch` — isolated from bot handler modules
+  - Core `worker` now uses `WORKER_ROLE=core` explicitly
+- **EPIC B1.5 — Dispatch Isolation**: `app/core/dispatch/` package
+  - `crew_view.py` — `format_crew_message()` + localized labels
+  - `services.py` — `notify_operator_crew_fallback()`
+  - `jobs.py` — `handle_notify_crew_fallback()` job handler
+  - Backward-compatible re-exports from `notification_service.py`
+  - Dispatch code does NOT import bot handler modules
 
 ### Fixed
 - **Address translation not loading** — translations with `"unchanged"` status
@@ -50,18 +64,6 @@ _Working towards v1.0.0 — production stabilization._
 - **Crew message used UUID fragment as job ID** — replaced with sequential
   `lead_number` from DB (`#42` instead of `#0952ef82`)
 - **Crew message had useless header** — removed `📣 FOR CREW (Copy to group)`
-- **(EPIC D1) Item quantity inflated by attribute numbers** — `extract_items()`
-  treated any digit in the fragment as quantity (e.g. "5-дверный шкаф" → qty=5,
-  "холодильник 200кг" → qty=200). Now uses explicit quantity markers only
-  (`x5`, `5шт`, `qty:5`, etc.) with attribute suppression (`двер`, `кг`, `см`)
-  and a sanity cap (bare number > 20 → qty=1)
-- **(EPIC D3) Crew message missing multi-pickup route** — crew view only showed
-  first pickup floor; now renders all pickup points with per-point floors and
-  elevator info, plus localized labels (Забор/Pickup/איסוף)
-- **(EPIC B1.5) Dispatch code not isolated** — `format_crew_message()` and
-  `notify_operator_crew_fallback()` still lived inline in `notification_service.py`;
-  moved canonical implementations to `app/core/dispatch/` package with
-  backward-compatible re-exports
 
 ---
 

@@ -68,7 +68,7 @@ def format_crew_message(lead_id: str, payload: dict[str, Any]) -> str:
         pickup_names: list[str] = []
         geo = custom.get("geo_points", {})
         for i, p in enumerate(pickups):
-            # Try geo_points first (from, from_2, from_3) for locality name
+            # Try geo_points first (from_1, from_2, etc.) for locality name
             geo_key = f"from_{i + 1}" if i > 0 else "from"
             loc = None
             if geo_key in geo:

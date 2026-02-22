@@ -17,9 +17,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
-# Register bot handlers — the engine is decoupled from specific handlers,
-# so the application bootstrap is responsible for triggering registration.
-import app.core.handlers  # noqa: F401
+# EPIC A1: Runtime-controlled handler registration (replaces static import).
+from app.core.handlers.registry import register_handlers, parse_enabled_bots
 from app.core.use_cases import Stage0Engine
 from app.infra.pg_session_store_async import AsyncPostgresSessionStore
 from app.infra.pg_lead_repo_async import AsyncPostgresLeadRepository
@@ -282,6 +281,10 @@ async def lifespan(fastapi_app: FastAPI):
         if settings.meta_phone_number_id:
             logger.info(f"Meta Phone Number ID: {settings.meta_phone_number_id}")
 
+    # EPIC A1: Register bot handlers (runtime-controlled, replaces static import)
+    registered_bots = register_handlers(parse_enabled_bots())
+    logger.info("Registered bot handlers: %s", registered_bots)
+
     # Load tenant registry (v0.8 multi-tenant)
     from app.infra.tenant_registry import load_tenants
     tenant_count = await load_tenants()
@@ -309,8 +312,8 @@ async def lifespan(fastapi_app: FastAPI):
             handle_outbound_reply,
             handle_process_media,
             handle_notify_operator,
-            handle_notify_crew_fallback,
         )
+        from app.core.dispatch.jobs import handle_notify_crew_fallback
 
         job_repo = get_job_repo()
         job_worker = JobWorker(
@@ -320,10 +323,19 @@ async def lifespan(fastapi_app: FastAPI):
             base_retry_delay=settings.job_worker_base_retry_delay,
             stale_timeout=settings.job_worker_stale_timeout,
         )
-        job_worker.register("outbound_reply", handle_outbound_reply)
-        job_worker.register("process_media", handle_process_media)
-        job_worker.register("notify_operator", handle_notify_operator)
-        job_worker.register("notify_crew_fallback", handle_notify_crew_fallback)
+
+        # EPIC A2: Register job handlers based on WORKER_ROLE
+        worker_role = settings.worker_role  # "core" | "dispatch" | "all"
+
+        if worker_role in ("core", "all"):
+            job_worker.register("outbound_reply", handle_outbound_reply)
+            job_worker.register("process_media", handle_process_media)
+            job_worker.register("notify_operator", handle_notify_operator)
+
+        if worker_role in ("dispatch", "all"):
+            job_worker.register("notify_crew_fallback", handle_notify_crew_fallback)
+
+        logger.info("Job worker role=%s, handlers=%s", worker_role, job_worker.list_handlers())
         await job_worker.start()
     else:
         if settings.run_mode not in ("all", "worker"):

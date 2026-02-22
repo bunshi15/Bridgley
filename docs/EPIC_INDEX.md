@@ -2,10 +2,10 @@ EPIC_INDEX.md
 (опционально, 1 страница зависимостей)
 
 EPIC A — Platform
-    A1 Engine Modularization
+    A1 Engine Modularization (done)
     A1.1 Bot Package Layout (done)
-    A2 Worker Separation
-    A3 Deploy Profiles
+    A2 Worker Separation (done)
+    A3 Deploy Profiles (done)
 
 EPIC B — Dispatch
     B1 Fallback (done)

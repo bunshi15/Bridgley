@@ -3,15 +3,14 @@
 Bot Handlers Package
 
 This package contains all bot type implementations.
-Each handler implements the BotHandler protocol and is registered with the BotHandlerRegistry.
+Each handler implements the BotHandler protocol.
+
+**Registration** is no longer done at import time (EPIC A1).
+Use ``register_handlers()`` from ``app.core.handlers.registry``
+at application startup instead.  Only bots listed in ``ENABLED_BOTS``
+env var will be loaded.
 """
-from app.core.bot_handler import BotHandlerRegistry
-from app.core.handlers.moving_bot_handler import MovingBotHandler
 
-# Register all bot handlers
-BotHandlerRegistry.register("moving_bot_v1", MovingBotHandler())
-
-# Export for convenience
-__all__ = [
-    "MovingBotHandler",
-]
+# NOTE: Do NOT import handler classes here — that would defeat
+# the purpose of lazy/selective registration via ENABLED_BOTS.
+# Use ``from app.core.handlers.registry import register_handlers``.

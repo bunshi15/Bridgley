@@ -414,6 +414,8 @@ from app.core.dispatch.crew_view import format_crew_message  # noqa: F401
 from app.core.dispatch.services import notify_operator_crew_fallback  # noqa: F401
 
 
+
+
 async def _get_photo_urls_for_lead(tenant_id: str, lead_id: str) -> list[str]:
     """
     Get photo URLs for a specific lead/ticket.
@@ -581,5 +583,6 @@ async def notify_operator(
 
 
 
-# NOTE: notify_operator_crew_fallback() and format_crew_message() are now
-# re-exported from app.core.dispatch above.
+# NOTE: notify_operator_crew_fallback() was here — canonical implementation
+# is now in app.core.dispatch.services. Re-exported above (line ~414) for
+# backward-compatible imports.

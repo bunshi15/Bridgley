@@ -149,6 +149,10 @@ class Settings(BaseSettings):
     translation_retries: int = 2
     translation_rate_limit_per_minute: int = 60
 
+    # Engine Modularization (EPIC A)
+    enabled_bots: str = "moving_bot_v1"           # Comma-separated bot types to register
+    worker_role: Literal["core", "dispatch", "all"] = "all"  # Job handler scope
+
     # Dispatch Layer — Iteration 1: Operator Fallback (Manual Copy)
     dispatch_crew_fallback_enabled: bool = False  # Send crew-safe copy-paste message alongside full lead
 
