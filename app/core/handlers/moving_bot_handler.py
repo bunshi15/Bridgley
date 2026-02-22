@@ -38,7 +38,7 @@ from app.core.bots.moving_bot_choices import (
 from app.core.bots.moving_bot_validators import (
     norm, lower, looks_too_short, parse_extras_input, detect_intent,
     parse_date, parse_exact_time, parse_floor_info, extract_items,
-    detect_volume_from_rooms,
+    detect_volume_from_rooms, detect_volume_from_items,
     sanitize_text, parse_landing_prefill, LandingPrefill,
     detect_language,
 )
@@ -152,6 +152,8 @@ def _compute_estimate(state) -> dict:
             "to_locality": route_cls.to_locality,
             "from_region": route_cls.from_region,
             "to_region": route_cls.to_region,
+            "from_names": route_cls.from_names,
+            "to_names": route_cls.to_names,
         }
 
     return estimate_price(
@@ -274,10 +276,13 @@ class MovingBotHandler:
                 state.data.custom["volume_from_rooms"] = True
                 state.step = "pickup_count"
                 return state, get_text("q_pickup_count", lang), False
-            # Skip volume when user provided specific items — estimate
-            # can work from the item list alone.  Only ask volume
-            # when cargo is vague (no rooms AND no recognised items).
+            # Infer volume from recognised items so G6 complexity guard
+            # can fire even when volume wasn't asked explicitly.
             if cargo_items:
+                inferred_vol = detect_volume_from_items(cargo_items)
+                if inferred_vol:
+                    state.data.custom["volume_category"] = inferred_vol
+                    state.data.custom["volume_from_items"] = True
                 state.step = "pickup_count"
                 return state, get_text("q_pickup_count", lang), False
             # No rooms, no items → ask volume explicitly
@@ -599,6 +604,39 @@ class MovingBotHandler:
     ) -> Tuple[SessionState, str, bool]:
         """Compute the price estimate, store it, and show the summary."""
         est = _compute_estimate(state)
+
+        # Parsing quality check: if user wrote a lot but we extracted
+        # nothing/very little, the estimate is unreliable — suppress it.
+        cargo_raw = state.data.custom.get("cargo_raw", "")
+        cargo_items = state.data.custom.get("cargo_items") or []
+        estimate_suppressed = (
+            len(cargo_raw) > 30
+            and len(cargo_items) == 0
+            and not state.data.custom.get("volume_category")
+        )
+
+        if estimate_suppressed:
+            state.data.custom["estimate_suppressed"] = True
+            # Still store breakdown for operator debugging, but no price for user
+            state.data.custom["estimate_breakdown"] = est["breakdown"]
+
+            # Phase 15: structured observability log
+            breakdown = est["breakdown"]
+            log_data = {
+                "event": "estimate_suppressed",
+                "lead_id": state.lead_id,
+                "tenant_id": state.tenant_id,
+                "cargo_raw_len": len(cargo_raw),
+                "items_count": 0,
+                "volume_category": None,
+                "source": state.data.custom.get("source", "chat"),
+            }
+            logger.info("estimate_suppressed", extra=log_data)
+
+            state.step = "estimate"
+            return state, get_text("estimate_no_price", lang), False
+
+        # Normal path — store estimate and show to user
         state.data.custom["estimate_min"] = est["estimate_min"]
         state.data.custom["estimate_max"] = est["estimate_max"]
         state.data.custom["estimate_currency"] = est["currency"]
@@ -621,9 +659,12 @@ class MovingBotHandler:
             "floor_surcharge": breakdown.get("floor_surcharge", 0),
             "volume_surcharge": breakdown.get("volume_surcharge", 0),
             "extras_adjustment": breakdown.get("extras_adjustment", 0),
-            "items_count": len(state.data.custom.get("cargo_items") or []),
+            "items_count": len(cargo_items),
             "pickup_count": state.data.custom.get("pickup_count", 1),
             "source": state.data.custom.get("source", "chat"),
+            "complexity_score": breakdown.get("complexity_score", 0),
+            "complexity_triggers": breakdown.get("complexity_triggers", []),
+            "complexity_applied": breakdown.get("complexity_applied", False),
         }
         logger.info("estimate_computed", extra=log_data)
 
@@ -658,6 +699,13 @@ class MovingBotHandler:
             if room_vol:
                 state.data.custom["volume_category"] = room_vol
                 state.data.custom["volume_from_rooms"] = True
+            else:
+                inferred_vol = detect_volume_from_items(
+                    state.data.custom.get("cargo_items") or []
+                )
+                if inferred_vol:
+                    state.data.custom["volume_category"] = inferred_vol
+                    state.data.custom["volume_from_items"] = True
         elif prefill.move_type:
             state.data.cargo_description = prefill.move_type
             state.data.custom["cargo_raw"] = prefill.move_type
@@ -688,6 +736,8 @@ class MovingBotHandler:
                 "to_locality": route_cls.to_locality,
                 "from_region": route_cls.from_region,
                 "to_region": route_cls.to_region,
+                "from_names": route_cls.from_names,
+                "to_names": route_cls.to_names,
             }
 
         ack = get_text("ack_landing_prefill", lang)

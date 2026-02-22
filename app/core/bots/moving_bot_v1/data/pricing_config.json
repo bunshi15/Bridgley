@@ -43,25 +43,43 @@
     "box_standard":    [15, 20],
     "bag_suitcase":    [15, 30],
     "chair":           [20, 40],
-    "tv_monitor":      [40, 80]
+    "tv_monitor":      [40, 80],
+    "gas_stove":           [150, 220],
+    "sofa_4seat":          [250, 320],
+    "sofa_5seat":          [300, 380],
+    "shelving_unit":       [80, 150],
+    "exercise_machine":    [150, 250],
+    "garden_furniture":    [80, 150],
+    "refrigerator_small":  [150, 220],
+    "refrigerator_large":  [280, 380],
+    "mattress":            [60, 120]
   },
 
   "item_aliases": {
     "refrigerator":    ["холодильник", "холодос", "fridge", "refrigerator", "מקרר"],
     "dining_table":    ["обеденный стол", "стол обеденный", "стол", "table", "dining table", "שולחן אוכל", "שולחן"],
-    "washing_machine": ["стиральная машина", "стиралка", "стиральная", "washing machine", "washer", "מכונת כביסה"],
+    "washing_machine": ["стирал шина", "стиралка", "стиральная", "washing machine", "washer", "מכונת כביסה"],
     "dryer":           ["сушилка", "сушильная машина", "dryer", "מייבש", "מייבש כביסה"],
-    "sofa_2seat":      ["диванчик", "маленький диван", "двухместный диван", "loveseat", "small sofa", "2-seat sofa", "ספה קטנה", "ספה דו-מושבית"],
-    "sofa_3seat":      ["диван", "большой диван", "трёхместный диван", "sofa", "couch", "3-seat sofa", "ספה", "ספה גדולה"],
+    "sofa_2seat":      ["диванчик", "маленький диван", "двухместный диван", "2-местный диван", "2 местный диван", "loveseat", "small sofa", "2-seat sofa", "2-seater sofa", "ספה קטנה", "ספה דו-מושבית"],
+    "sofa_3seat":      ["диван", "трёхместный диван", "3-местный диван", "3 местный диван", "sofa", "couch", "3-seat sofa", "3-seater sofa", "ספה"],
     "wardrobe_small":  ["шкаф-солдатик", "шкаф 1 дверь", "шкаф 2 двери", "шкаф однодверный", "шкаф двухдверный", "маленький шкаф", "small wardrobe", "small closet", "ארון קטן"],
     "wardrobe_large":  ["шифоньер 3 двери", "шифоньер 4 двери", "шифонер 3 двери", "шифонер 4 двери", "шкаф 3 двери", "шкаф 4 двери", "шкаф трёхдверный", "шкаф четырёхдверный", "шифоньер", "шифонер", "большой шкаф", "шкаф-купе", "large wardrobe", "big closet", "ארון גדול", "шкаф", "гардероб", "wardrobe", "closet", "ארון", "ארון בגדים"],
-    "bed_single":      ["кровать односпальная", "односпальная кровать", "single bed", "מיטת יחיד", "מיטה יחיד"],
+    "bed_single":      ["детская кровать", "детская кроватка", "кровать односпальная", "односпальная кровать", "single bed", "kids bed", "children bed", "child bed", "מיטת יחיד", "מיטה יחיד", "מיטת ילדים"],
     "bed_double":      ["кровать", "двуспальная кровать", "кровать двуспальная", "bed", "double bed", "queen bed", "king bed", "מיטה", "מיטה זוגית"],
     "desk":            ["письменный стол", "рабочий стол", "desk", "office desk", "שולחן כתיבה", "שולחן עבודה"],
     "box_standard":    ["коробка", "коробки", "коробок", "box", "boxes", "קרטון", "קרטונים"],
     "bag_suitcase":    ["сумка", "сумок", "чемодан", "сумки", "чемоданы", "bag", "bags", "suitcase", "suitcases", "תיק", "מזוודה", "תיקים", "מזוודות"],
     "chair":           ["стул", "стулья", "chair", "chairs", "כיסא", "כיסאות"],
-    "tv_monitor":      ["телевизор", "монитор", "tv", "television", "monitor", "screen", "טלוויזיה", "מסך"]
+    "tv_monitor":      ["телевизор", "монитор", "tv", "television", "monitor", "screen", "טלוויזיה", "מסך"],
+    "gas_stove":           ["газовая плита", "газ плита", "плита газовая", "плита", "gas stove", "stove", "כיריים", "תנור גז"],
+    "sofa_4seat":          ["четырехместный диван", "четырёхместный диван", "4-местный диван", "4 местный диван", "большой диван", "4-seat sofa", "4-seater sofa", "large sofa", "ספה גדולה", "ספה 4 מושבים"],
+    "sofa_5seat":          ["пятиместный диван", "5-местный диван", "5 местный диван", "5-seat sofa", "5-seater sofa", "ספה 5 מושבים"],
+    "shelving_unit":       ["стеллаж", "стелаж", "этажерка", "полка", "shelving unit", "shelf", "bookshelf", "מדף", "כוננית"],
+    "exercise_machine":    ["тренажер", "тренажёр", "беговая дорожка", "exercise machine", "treadmill", "gym equipment", "מכשיר כושר"],
+    "garden_furniture":    ["садовая мебель", "уличная мебель", "garden furniture", "outdoor furniture", "ריהוט גן"],
+    "refrigerator_small":  ["маленький холодильник", "мини холодильник", "однодверный холодильник", "small fridge", "mini fridge", "מקרר קטן"],
+    "refrigerator_large":  ["большой холодильник", "двухдверный холодильник", "двудверный холодильник", "side by side", "large fridge", "double-door fridge", "מקרר גדול", "מקרר דו-דלתי"],
+    "mattress":            ["матрас", "матрасс", "матрац", "матрасы", "матрасов", "mattress", "mattresses", "מזרן", "מזרנים"]
   },
 
   "routing": {
@@ -86,5 +104,61 @@
     "high_floor_no_elevator_threshold": 5,
     "high_floor_surcharge_multiplier": 1.5,
     "national_move_minimum": 1000
+  },
+
+  "complexity": {
+    "complex_multiplier": 1.18,
+    "complex_min_floor": 7800,
+    "risk_buffer_pct": 0.08,
+    "score_threshold": 2,
+    "min_floor_score_threshold": 3,
+    "eligible_volume_categories": ["large", "xl"],
+    "trigger_route_bands": ["inter_region_short", "inter_region_long", "extreme_distance"],
+    "trigger_floor_no_elevator_min": 5,
+    "trigger_pickup_count_min": 2,
+    "exempt_volume": "small",
+    "exempt_route_bands": ["same_city"]
+  },
+
+  "volume_from_items": {
+    "heavy_keys": [
+      "wardrobe_large", "wardrobe_small", "bed_double", "bed_single",
+      "sofa_3seat", "sofa_2seat", "sofa_4seat", "sofa_5seat",
+      "refrigerator", "refrigerator_small", "refrigerator_large",
+      "washing_machine", "dryer", "dining_table",
+      "gas_stove", "exercise_machine"
+    ],
+    "xl_items_mid": 1500,
+    "xl_heavy_count": 4,
+    "large_items_mid": 700,
+    "large_heavy_count": 2,
+    "medium_items_mid": 300
+  },
+
+  "item_labels": {
+    "dining_table":    {"ru": "Обеденный стол",       "en": "Dining table",    "he": "שולחן אוכל"},
+    "dryer":           {"ru": "Сушилка",               "en": "Dryer",           "he": "מייבש"},
+    "washing_machine": {"ru": "Стиральная машина",     "en": "Washing machine", "he": "מכונת כביסה"},
+    "refrigerator":    {"ru": "Холодильник",           "en": "Refrigerator",    "he": "מקרר"},
+    "sofa_2seat":      {"ru": "Диван (2-мест.)",       "en": "Loveseat",        "he": "ספה דו-מושבית"},
+    "sofa_3seat":      {"ru": "Диван",                 "en": "Sofa",            "he": "ספה"},
+    "wardrobe_small":  {"ru": "Шкаф маленький",        "en": "Small wardrobe",  "he": "ארון קטן"},
+    "wardrobe_large":  {"ru": "Шкаф большой",          "en": "Large wardrobe",  "he": "ארון גדול"},
+    "bed_single":      {"ru": "Кровать односпальная",  "en": "Single bed",      "he": "מיטת יחיד"},
+    "bed_double":      {"ru": "Кровать двуспальная",   "en": "Double bed",      "he": "מיטה זוגית"},
+    "desk":            {"ru": "Письменный стол",       "en": "Desk",            "he": "שולחן כתיבה"},
+    "box_standard":    {"ru": "Коробка",               "en": "Box",             "he": "קרטון"},
+    "bag_suitcase":    {"ru": "Сумка/чемодан",         "en": "Bag/suitcase",    "he": "תיק/מזוודה"},
+    "chair":           {"ru": "Стул",                  "en": "Chair",           "he": "כיסא"},
+    "tv_monitor":      {"ru": "ТВ/монитор",            "en": "TV/monitor",      "he": "טלוויזיה/מסך"},
+    "gas_stove":           {"ru": "Газовая плита",     "en": "Gas stove",          "he": "כיריים גז"},
+    "sofa_4seat":          {"ru": "Диван (4-мест.)",   "en": "4-seat sofa",        "he": "ספה 4 מושבים"},
+    "sofa_5seat":          {"ru": "Диван (5-мест.)",   "en": "5-seat sofa",        "he": "ספה 5 מושבים"},
+    "shelving_unit":       {"ru": "Стеллаж",           "en": "Shelving unit",      "he": "כוננית"},
+    "exercise_machine":    {"ru": "Тренажёр",          "en": "Exercise machine",   "he": "מכשיר כושר"},
+    "garden_furniture":    {"ru": "Садовая мебель",    "en": "Garden furniture",   "he": "ריהוט גן"},
+    "refrigerator_small":  {"ru": "Холодильник мал.",  "en": "Small fridge",       "he": "מקרר קטן"},
+    "refrigerator_large":  {"ru": "Холодильник бол.",  "en": "Large fridge",       "he": "מקרר גדול"},
+    "mattress":            {"ru": "Матрас",            "en": "Mattress",           "he": "מזרן"}
   }
 }

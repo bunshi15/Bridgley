@@ -21,12 +21,13 @@ __all__ = [
     "parse_date", "parse_exact_time",
     "extract_items",
     "detect_volume_from_rooms",
+    "detect_volume_from_items",
     "detect_intent",
     "LandingPrefill", "parse_landing_prefill",
     # Private — used by tests / other modules:
     "_parse_natural_date", "_validate_date_range", "_resolve_day_month",
     "_EXPLICIT_QTY_PATTERN", "_ATTR_SUFFIXES", "_BARE_QTY_PATTERN",
-    "_QTY_SANITY_CAP", "_UNIT_STRIP", "_ITEM_SEPARATORS",
+    "_QTY_SANITY_CAP", "_ITEM_SEPARATORS",
     "_JUNK_INPUTS",
     "_HEBREW_RE", "_CYRILLIC_RE", "_LATIN_RE", "_MIN_LETTERS_FOR_DETECTION",
     "_ELEVATOR_YES_PATTERNS", "_ELEVATOR_NO_PATTERNS",
@@ -646,6 +647,7 @@ _EXPLICIT_QTY_PATTERN = re.compile(
 _ATTR_SUFFIXES = re.compile(
     r"\d+[\s\-]*(?:"
     r"двер|door"              # doors: "5-дверный", "5 door", "5дверный"
+    r"|местн|seater"          # seat count: "5 местный", "5-seater"
     r"|кг|kg"                 # weight
     r"|г\b|g\b"               # grams (word boundary to avoid false hits)
     r"|л\b|l\b|литр|liter"    # liters
@@ -657,11 +659,10 @@ _ATTR_SUFFIXES = re.compile(
 # Bare number fallback (used only when no explicit marker and no attributes)
 _BARE_QTY_PATTERN = re.compile(r"(\d+)")
 
-# Max reasonable qty without an explicit marker (sanity cap)
-_QTY_SANITY_CAP = 20
-
-# Unit words between quantity and item: "5 шт коробок", "5шт. коробок", "5 штук коробок"
-_UNIT_STRIP = re.compile(r"(\d+)\s*(?:шт\.?|штук)\s*", re.IGNORECASE)
+# Max reasonable qty without an explicit marker (sanity cap).
+# Covers real scenarios like "80 коробок" while preventing nonsense
+# like "2024 коробок" (year parsed as qty).
+_QTY_SANITY_CAP = 200
 
 
 def extract_items(
@@ -696,9 +697,6 @@ def extract_items(
         fragment = fragment.strip().lower()
         if not fragment:
             continue
-
-        # Normalize unit words: "5 шт коробок" -> "5 коробок"
-        fragment = _UNIT_STRIP.sub(r"\1 ", fragment).strip()
 
         # Try to find a matching alias (longest-first from sorted lookup)
         matched_key = None
@@ -820,6 +818,57 @@ def detect_volume_from_rooms(text: str) -> str | None:
         return None
 
     return _ROOM_COUNT_TO_VOLUME.get(major_room_count, "xl")
+
+
+# ---------------------------------------------------------------------------
+# Volume detection from extracted items
+# ---------------------------------------------------------------------------
+
+def detect_volume_from_items(items: list[dict] | None) -> str | None:
+    """Infer volume_category from extracted cargo items.
+
+    Uses item total value (items_mid) and count of heavy/bulky items.
+    Thresholds from pricing_config.json ``"volume_from_items"`` section.
+
+    Returns ``"xl"``, ``"large"``, ``"medium"``, or ``None``.
+    """
+    if not items:
+        return None
+
+    from app.core.bots.moving_bot_v1.pricing import (
+        ITEM_CATALOG, VOLUME_FROM_ITEMS_CONFIG,
+    )
+    if not VOLUME_FROM_ITEMS_CONFIG:
+        return None
+
+    heavy_keys = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+
+    items_mid = 0.0
+    heavy_count = 0
+    for item in items:
+        key = item.get("key", "")
+        qty = item.get("qty", 1)
+        if key in ITEM_CATALOG:
+            lo, hi = ITEM_CATALOG[key]
+            items_mid += ((lo + hi) / 2) * qty
+        if key in heavy_keys:
+            heavy_count += qty
+
+    xl_mid = float(VOLUME_FROM_ITEMS_CONFIG.get("xl_items_mid", 1500))
+    xl_heavy = int(VOLUME_FROM_ITEMS_CONFIG.get("xl_heavy_count", 4))
+    if items_mid >= xl_mid or heavy_count >= xl_heavy:
+        return "xl"
+
+    large_mid = float(VOLUME_FROM_ITEMS_CONFIG.get("large_items_mid", 700))
+    large_heavy = int(VOLUME_FROM_ITEMS_CONFIG.get("large_heavy_count", 2))
+    if items_mid >= large_mid or heavy_count >= large_heavy:
+        return "large"
+
+    medium_mid = float(VOLUME_FROM_ITEMS_CONFIG.get("medium_items_mid", 300))
+    if items_mid >= medium_mid:
+        return "medium"
+
+    return None
 
 
 # ---------------------------------------------------------------------------

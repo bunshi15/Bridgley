@@ -18,6 +18,7 @@ v1.1 — midpoint-based estimate (Phase 6): stable center, symmetric margin.
 v1.2 — JSON-driven config + volume categories (Phase 9).
 v1.3 — Multilingual item aliases + qty-based items (Phase 10).
 v2.0 — Nationwide routing bands + underpricing guards (Phase 14).
+v2.1 — Complexity scoring guard (G6): multiplier + hard floor for premium moves.
 
 All values are in **ILS** and must match mover expectations.
 """
@@ -34,7 +35,8 @@ __all__ = [
     "ITEM_CATALOG", "ITEM_ALIAS_LOOKUP",
     "VOLUME_CATEGORIES", "EXTRAS_ADJUSTMENTS",
     "ROUTING_BANDS", "ROUTING_MINIMUMS",
-    "GUARDS",
+    "GUARDS", "COMPLEXITY_GUARDS",
+    "VOLUME_FROM_ITEMS_CONFIG", "ITEM_LABELS",
     "estimate_price",
     # Private — used by tests:
     "_RAW_CONFIG", "_CONFIG_PATH",
@@ -166,7 +168,32 @@ GUARDS: dict[str, object] = dict(_RAW_CONFIG.get("guards", {}))
 
 
 # ---------------------------------------------------------------------------
-# Estimate function (Phase 3 -> v1.1 Phase 6 -> v1.2 Phase 9 -> v2.0 Phase 14)
+# Complexity guards — G6: multiplier + hard floor for premium moves
+# ---------------------------------------------------------------------------
+
+COMPLEXITY_GUARDS: dict[str, object] = dict(_RAW_CONFIG.get("complexity", {}))
+
+
+# ---------------------------------------------------------------------------
+# Volume inference from items — thresholds for auto-detecting volume category
+# ---------------------------------------------------------------------------
+
+VOLUME_FROM_ITEMS_CONFIG: dict[str, object] = dict(
+    _RAW_CONFIG.get("volume_from_items", {})
+)
+
+
+# ---------------------------------------------------------------------------
+# Item labels — localized display names for crew messages
+# ---------------------------------------------------------------------------
+
+ITEM_LABELS: dict[str, dict[str, str]] = dict(
+    _RAW_CONFIG.get("item_labels", {})
+)
+
+
+# ---------------------------------------------------------------------------
+# Estimate function (Phase 3 -> v1.1 Phase 6 -> v1.2 Phase 9 -> v2.0 Phase 14 -> v2.1 G6)
 # ---------------------------------------------------------------------------
 
 def estimate_price(
@@ -305,6 +332,70 @@ def estimate_price(
     # 7.2: Apply distance factor (coarse geo multiplier, legacy)
     mid = mid * cfg.distance_factor
 
+    # G6: Complexity scoring guard ----------------------------------------
+    complexity_score = 0
+    complexity_triggers: list[str] = []
+    complexity_applied = False
+
+    eligible_volumes = COMPLEXITY_GUARDS.get(
+        "eligible_volume_categories", ["large", "xl"],
+    )
+    exempt_vol = COMPLEXITY_GUARDS.get("exempt_volume", "small")
+
+    if (
+        volume_category
+        and volume_category != exempt_vol
+        and volume_category in eligible_volumes
+    ):
+        # Trigger 1: volume category
+        complexity_score += 1
+        complexity_triggers.append("volume_" + volume_category)
+
+        # Trigger 2: assembly in extras
+        if extras and "assembly" in extras:
+            complexity_score += 1
+            complexity_triggers.append("assembly")
+
+        # Trigger 3: multi-pickup
+        pickup_min = int(COMPLEXITY_GUARDS.get("trigger_pickup_count_min", 2))
+        if extra_pickups + 1 >= pickup_min:
+            complexity_score += 1
+            complexity_triggers.append("multi_pickup")
+
+        # Trigger 4: inter-region route band
+        trigger_routes = COMPLEXITY_GUARDS.get("trigger_route_bands", [])
+        if route_band and route_band in trigger_routes:
+            complexity_score += 1
+            complexity_triggers.append("route_" + route_band)
+
+        # Trigger 5: high floor without elevator (crane territory)
+        c_floor_min = int(
+            COMPLEXITY_GUARDS.get("trigger_floor_no_elevator_min", 5),
+        )
+        c_high_floor = False
+        if pickup_floors:
+            for pf, pe in pickup_floors:
+                if not pe and pf >= c_floor_min:
+                    c_high_floor = True
+                    break
+        else:
+            if not has_elevator_from and floor_from >= c_floor_min:
+                c_high_floor = True
+        if not has_elevator_to and floor_to >= c_floor_min:
+            c_high_floor = True
+        if c_high_floor:
+            complexity_score += 1
+            complexity_triggers.append("high_floor_no_elevator")
+
+    # Apply complexity multiplier + risk buffer
+    c_threshold = int(COMPLEXITY_GUARDS.get("score_threshold", 2))
+    if complexity_score >= c_threshold:
+        c_multiplier = float(COMPLEXITY_GUARDS.get("complex_multiplier", 1.0))
+        c_risk = float(COMPLEXITY_GUARDS.get("risk_buffer_pct", 0.0))
+        mid = mid * c_multiplier * (1 + c_risk)
+        complexity_applied = True
+    # ---------------------------------------------------------------------
+
     # 8. Symmetric margin around midpoint
     estimate_min = max(0, math.floor(mid * (1 - cfg.estimate_margin)))
     estimate_max = math.ceil(mid * (1 + cfg.estimate_margin))
@@ -342,6 +433,21 @@ def estimate_price(
     if has_high_floor:
         guards_applied.append("high_floor_surcharge")
 
+    # G6: complex_min_floor (only at high complexity score)
+    if complexity_applied:
+        c_floor_threshold = int(
+            COMPLEXITY_GUARDS.get("min_floor_score_threshold", 3),
+        )
+        if complexity_score >= c_floor_threshold:
+            c_min_floor = int(COMPLEXITY_GUARDS.get("complex_min_floor", 0))
+            if c_min_floor > 0 and estimate_min < c_min_floor:
+                estimate_min = c_min_floor
+                if estimate_max < c_min_floor:
+                    estimate_max = c_min_floor
+                minimum_applied = True
+                guards_applied.append("complex_min_floor")
+        guards_applied.append("complexity_guard")
+
     return {
         "estimate_min": estimate_min,
         "estimate_max": estimate_max,
@@ -359,5 +465,8 @@ def estimate_price(
             "route_minimum": route_minimum,
             "minimum_applied": minimum_applied,
             "guards_applied": guards_applied,
+            "complexity_score": complexity_score,
+            "complexity_triggers": complexity_triggers,
+            "complexity_applied": complexity_applied,
         },
     }

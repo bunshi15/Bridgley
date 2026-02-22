@@ -260,82 +260,6 @@ Not part of v1 runtime.
 
 ---
 
-# G6 — Pricing Complexity Guards
-
-## Problem
-
-Current pricing may undervalue:
-
-* Crane-required moves
-* Multi-level + storage
-* Heavy assembly
-* XL volume jobs
-
-Market for these: ~10–12k
-Target band: 8–9k
-Current risk: 5–6k
-
----
-
-## G6.1 Config Additions
-
-Extend `pricing_config.json`:
-
-```
-complex_multiplier: 1.18
-complex_min_floor: 7800
-risk_buffer_pct: 0.08
-```
-
-Triggers:
-
-```
-volume_category == "xl"
-extras includes assembly
-pickup_floors.count >= 2
-route_band in ["inter_region"]
-floor_without_elevator >= 3
-```
-
----
-
-## G6.2 Complexity Inference Logic
-
-Inside `estimate_price()`:
-
-1. Calculate base as usual.
-2. Compute complexity_score.
-3. If:
-
-   * `volume_category in ["l", "xl"]`
-   * AND score ≥ threshold
-
-Apply:
-
-```
-mid *= complex_multiplier
-estimate_min = max(estimate_min, complex_min_floor)
-```
-
-Then apply:
-
-```
-mid *= (1 + risk_buffer_pct)
-```
-
----
-
-## G6.3 Small Move Protection
-
-Do NOT apply complexity guard if:
-
-* `volume_category == small`
-* no assembly
-* same_city
-* low floors
-
----
-
 # G7 — Acceptance Criteria
 
 ## Functional
@@ -344,7 +268,6 @@ Do NOT apply complexity guard if:
 * Operator receives secure link.
 * Photos limited inline by threshold.
 * Media auto-deletes after TTL.
-* Pricing shifts complex moves upward.
 
 ## Security
 
@@ -370,7 +293,6 @@ Do NOT apply complexity guard if:
 4. API: unified `/media/{asset_id}`
 5. Notify: threshold logic
 6. Cleanup job
-7. Pricing guard integration
 
 ---
 
@@ -379,7 +301,6 @@ Do NOT apply complexity guard if:
 * Secure media ingestion.
 * Cost-optimized operator delivery.
 * No heavy video processing.
-* Controlled complexity pricing.
 * Architecture ready for STT v2.
 
 ---

@@ -56,8 +56,9 @@ def format_crew_message(lead_id: str, payload: dict[str, Any]) -> str:
     pickups = custom.get("pickups", [])
     route_cls = custom.get("route_classification", {})
 
-    # Resolve destination locality
-    to_locality = route_cls.get("to_locality")
+    # Resolve destination locality (prefer locale-aware name)
+    to_names = route_cls.get("to_names") or {}
+    to_locality = to_names.get(lang) or route_cls.get("to_locality")
     if not to_locality:
         geo = custom.get("geo_points", {})
         if "to" in geo:
@@ -74,7 +75,8 @@ def format_crew_message(lead_id: str, payload: dict[str, Any]) -> str:
             if geo_key in geo:
                 loc = geo[geo_key].get("name") or geo[geo_key].get("address")
             if not loc and i == 0:
-                loc = route_cls.get("from_locality")
+                from_names_d = route_cls.get("from_names") or {}
+                loc = from_names_d.get(lang) or route_cls.get("from_locality")
             if not loc:
                 # Last resort: raw address (may contain PII — but pickups
                 # only store what the user typed, which is usually a city)
@@ -85,7 +87,8 @@ def format_crew_message(lead_id: str, payload: dict[str, Any]) -> str:
         route_str = " → ".join(pickup_names) + f" → {dest}"
     else:
         # Single pickup: standard from → to
-        from_locality = route_cls.get("from_locality")
+        from_names_d = route_cls.get("from_names") or {}
+        from_locality = from_names_d.get(lang) or route_cls.get("from_locality")
         if not from_locality:
             geo = custom.get("geo_points", {})
             if "from" in geo:
@@ -102,7 +105,7 @@ def format_crew_message(lead_id: str, payload: dict[str, Any]) -> str:
 
     # --- Date + time window ---
     move_date = custom.get("move_date")
-    time_window_str = _format_time_window(data.get("time_window"))
+    time_window_str = _format_time_window(data.get("time_window"), lang)
     if move_date:
         date_str = f"{move_date}, {time_window_str}"
     else:
@@ -143,6 +146,8 @@ def format_crew_message(lead_id: str, payload: dict[str, Any]) -> str:
         floors_str = f"{_floor_label(f_from, elev_from)} → {_floor_label(f_to, elev_to)}"
 
     # --- Items summary (from extract_items) ---
+    from app.core.bots.moving_bot_pricing import ITEM_LABELS
+
     cargo_items = custom.get("cargo_items") or []
     items_str = ""
     if cargo_items:
@@ -150,7 +155,7 @@ def format_crew_message(lead_id: str, payload: dict[str, Any]) -> str:
         for item in cargo_items[:8]:
             key = item.get("key", "")
             qty = item.get("qty", 1)
-            label = key.replace("_", " ").capitalize()
+            label = ITEM_LABELS.get(key, {}).get(lang) or key.replace("_", " ").capitalize()
             if qty > 1:
                 item_parts.append(f"{label} ×{qty}")
             else:
@@ -158,15 +163,16 @@ def format_crew_message(lead_id: str, payload: dict[str, Any]) -> str:
         items_str = ", ".join(item_parts)
 
     # --- Estimate ---
+    estimate_suppressed = custom.get("estimate_suppressed", False)
     estimate_min = custom.get("estimate_min")
     estimate_max = custom.get("estimate_max")
     estimate_str = ""
-    if estimate_min is not None and estimate_max is not None:
+    if not estimate_suppressed and estimate_min is not None and estimate_max is not None:
         estimate_str = f"₪{estimate_min}–₪{estimate_max}"
 
     # --- Extras (services) ---
     extras = data.get("extras")
-    extras_str = _format_extras(extras) if extras else ""
+    extras_str = _format_extras(extras, lang) if extras else ""
 
     # --- Build message (no header — operator knows the context) ---
     lines = [
@@ -180,7 +186,8 @@ def format_crew_message(lead_id: str, payload: dict[str, Any]) -> str:
 
     if items_str:
         lines.append(f"{_L['items']}: {items_str}")
-    if extras_str and extras_str != "нет":
+    _no_extras = {"нет", "none", "אין", ""}
+    if extras_str and extras_str not in _no_extras:
         lines.append(f"{_L['services']}: {extras_str}")
     if estimate_str:
         lines.append(f"{_L['estimate']}: {estimate_str}")
@@ -192,31 +199,52 @@ def format_crew_message(lead_id: str, payload: dict[str, Any]) -> str:
 # Private helpers (duplicated from notification_service to avoid coupling)
 # ---------------------------------------------------------------------------
 
-def _format_time_window(time_window: str | None) -> str:
-    """Format time window to human-readable Russian string."""
-    labels = {
-        "morning": "утро (08:00–12:00)",
-        "afternoon": "день (12:00–17:00)",
-        "evening": "вечер (17:00–21:00)",
-        "flexible": "гибко",
+def _format_time_window(time_window: str | None, lang: str = "ru") -> str:
+    """Format time window to human-readable localized string."""
+    _TW: dict[str, dict[str, str]] = {
+        "ru": {
+            "morning": "утро (08:00–12:00)", "afternoon": "день (12:00–17:00)",
+            "evening": "вечер (17:00–21:00)", "flexible": "гибко",
+            "exact": "точное время", "none": "не указано",
+        },
+        "en": {
+            "morning": "morning (08:00–12:00)", "afternoon": "afternoon (12:00–17:00)",
+            "evening": "evening (17:00–21:00)", "flexible": "flexible",
+            "exact": "exact time", "none": "not specified",
+        },
+        "he": {
+            "morning": "בוקר (08:00–12:00)", "afternoon": "צהריים (12:00–17:00)",
+            "evening": "ערב (17:00–21:00)", "flexible": "גמיש",
+            "exact": "שעה מדויקת", "none": "לא צוין",
+        },
     }
+    labels = _TW.get(lang, _TW["ru"])
     if time_window and time_window.startswith("exact:"):
-        return f"точное время: {time_window[6:]}"
-    return labels.get(time_window, time_window or "не указано")
+        return f"{labels['exact']}: {time_window[6:]}"
+    return labels.get(time_window, time_window or labels["none"])
 
 
-def _format_extras(extras: list | None) -> str:
-    """Format extras list to human-readable Russian string."""
-    if not extras:
-        return "нет"
-    labels = {
-        "loaders": "грузчики",
-        "assembly": "сборка/разборка",
-        "packing": "упаковка",
-        "none": "нет",
+def _format_extras(extras: list | None, lang: str = "ru") -> str:
+    """Format extras list to human-readable localized string."""
+    _EX: dict[str, dict[str, str]] = {
+        "ru": {
+            "loaders": "грузчики", "assembly": "сборка/разборка",
+            "packing": "упаковка", "none": "нет", "empty": "нет",
+        },
+        "en": {
+            "loaders": "movers", "assembly": "assembly/disassembly",
+            "packing": "packing", "none": "none", "empty": "none",
+        },
+        "he": {
+            "loaders": "סבלים", "assembly": "הרכבה/פירוק",
+            "packing": "אריזה", "none": "אין", "empty": "אין",
+        },
     }
+    labels = _EX.get(lang, _EX["ru"])
+    if not extras:
+        return labels["empty"]
     names = [labels.get(e, e) for e in extras if e != "none"]
-    return ", ".join(names) if names else "нет"
+    return ", ".join(names) if names else labels["empty"]
 
 
 # ---------------------------------------------------------------------------

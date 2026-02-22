@@ -288,6 +288,12 @@ MOVING_TRANSLATIONS = {
         he="📋 עלות משוערת להעברה:\n💰 {min_price}–{max_price} ₪\n\nזהו אומדן ראשוני. המחיר המדויק יסוכם עם המוביל.\n\nהכל נכון? שולחים את הבקשה?\n1 — כן, שלח\n2 — התחל מחדש"
     ),
 
+    "estimate_no_price": Translation(
+        ru="📋 Мы не смогли точно рассчитать стоимость по описанию.\n\nНаш менеджер свяжется с вами для уточнения.\n\nОтправляем заявку?\n1 — Да, отправить\n2 — Начать заново",
+        en="📋 We couldn't calculate an accurate estimate from the description.\n\nOur manager will contact you for details.\n\nSubmit the request?\n1 — Yes, submit\n2 — Start over",
+        he="📋 לא הצלחנו לחשב הערכה מדויקת מהתיאור.\n\nהמנהל שלנו ייצור איתך קשר לפרטים.\n\nשולחים את הבקשה?\n1 — כן, שלח\n2 — התחל מחדש",
+    ),
+
     "err_estimate_choice": Translation(
         ru="Выбери: 1 — отправить заявку, 2 — начать заново.",
         en="Please choose: 1 — submit request, 2 — start over.",

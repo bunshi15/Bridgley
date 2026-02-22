@@ -17,12 +17,14 @@ from app.core.bots.moving_bot_choices import TIME_CHOICES_DICT, EXTRA_OPTIONS, V
 from unittest.mock import patch
 from app.core.bots.moving_bot_validators import (
     norm, lower, looks_too_short, parse_choices, parse_extras_input, detect_intent,
-    extract_items, detect_volume_from_rooms,
+    extract_items, detect_volume_from_rooms, detect_volume_from_items,
     sanitize_text, parse_landing_prefill, LandingPrefill,
+    _ATTR_SUFFIXES,
 )
 from app.core.bots.moving_bot_pricing import (
     PricingConfig, HAIFA_METRO_PRICING, ITEM_CATALOG, EXTRAS_ADJUSTMENTS, estimate_price,
-    ITEM_ALIAS_LOOKUP, _build_alias_lookup,
+    ITEM_ALIAS_LOOKUP, _build_alias_lookup, COMPLEXITY_GUARDS,
+    VOLUME_FROM_ITEMS_CONFIG, ITEM_LABELS,
 )
 from app.core.handlers.moving_bot_handler import MovingBotHandler
 
@@ -1699,14 +1701,15 @@ class TestFullFlowWithEstimate:
         assert "₪" in reply
         # Floor from: 3 этаж, без лифта → floor=3, no elevator → (3-1)*50=100
         # Floor to: 5 этаж, лифт есть → floor=5, elevator → no surcharge
-        # Volume: small → surcharge=0
+        # Volume: inferred "large" from items (2 heavy: sofa+fridge) → surcharge=350
         # Extras: loaders (no pricing adj), packing (no pricing adj) → 0
         # Items (Phase 10): Диван→sofa_3seat(225) + холодильник→refrigerator(240) + 5 коробок→box_standard(87.5)
         # Route: Хайфа→Тель-Авив = inter_region_short → route_fee=500, route_minimum=1100
-        # fixed=150+100+500=750, items_mid=552.5, mid=1302.5
-        # 1302.5*0.85=1107, 1302.5*1.15=1498
-        assert state.data.custom["estimate_min"] == 1107
-        assert state.data.custom["estimate_max"] == 1498
+        # fixed=150+100+350+500=1100, items_mid=552.5, mid=1652.5
+        # G6 complexity: score=2 (volume_large + route), multiplier=1.18, risk=1.08
+        # mid=1652.5*1.18*1.08=2105.946 → min=floor(2105.946*0.85)=1790, max=ceil(2105.946*1.15)=2422
+        assert state.data.custom["estimate_min"] == 1790
+        assert state.data.custom["estimate_max"] == 2422
 
         # ESTIMATE → DONE (confirm)
         state, reply, done = self.handler.handle_text(state, "1")
@@ -1716,8 +1719,8 @@ class TestFullFlowWithEstimate:
         # Verify payload contains estimate
         payload = self.handler.get_payload(state)
         custom = payload["data"]["custom"]
-        assert custom["estimate_min"] == 1107
-        assert custom["estimate_max"] == 1498
+        assert custom["estimate_min"] == 1790
+        assert custom["estimate_max"] == 2422
         assert custom["estimate_currency"] == "ILS"
 
 
@@ -3103,10 +3106,11 @@ class TestFullFlowWithVolume:
         assert state.step == "estimate"
         assert "₪" in reply
         # base=150 + xl volume=600 + route_fee=500 (Хайфа→Тель-Авив, inter_region_short) = 1250
-        # 1250*0.85=1062.5→1062, 1250*1.15=1437.5→1438
-        # route_minimum=1100 → estimate_min=1100 (1062<1100)
-        assert state.data.custom["estimate_min"] == 1100
-        assert state.data.custom["estimate_max"] == 1438
+        # G6 complexity: score=2 (volume_xl + route_inter_region_short) >= threshold 2
+        # mid = 1250 * 1.18 * 1.08 = 1593.0
+        # 1593*0.85=1354.05→1354, 1593*1.15=1831.95→1832
+        assert state.data.custom["estimate_min"] == 1354
+        assert state.data.custom["estimate_max"] == 1832
         assert state.data.custom["estimate_breakdown"]["volume_surcharge"] == 600
 
         # ESTIMATE → DONE
@@ -3321,6 +3325,101 @@ class TestUnitWordExtraction:
         assert items["sofa_3seat"] == 1
 
 
+class TestNewItemCatalogEntries:
+    """Extended item catalog — gas stove, large sofas, shelving, etc."""
+
+    def test_gas_stove(self):
+        """'газовая плита' → gas_stove."""
+        result = extract_items("газовая плита")
+        assert result[0]["key"] == "gas_stove"
+
+    def test_gas_stove_short(self):
+        """'плита' → gas_stove."""
+        result = extract_items("плита")
+        assert result[0]["key"] == "gas_stove"
+
+    def test_sofa_4seat(self):
+        """'четырехместный диван' → sofa_4seat."""
+        result = extract_items("четырехместный диван")
+        assert result[0]["key"] == "sofa_4seat"
+
+    def test_sofa_4seat_bolshoy(self):
+        """'большой диван' → sofa_4seat (moved from sofa_3seat)."""
+        result = extract_items("большой диван")
+        assert result[0]["key"] == "sofa_4seat"
+
+    def test_sofa_5seat(self):
+        """'пятиместный диван' → sofa_5seat."""
+        result = extract_items("пятиместный диван")
+        assert result[0]["key"] == "sofa_5seat"
+
+    def test_sofa_3seat_still_works(self):
+        """'диван' → sofa_3seat (regular sofa unchanged)."""
+        result = extract_items("диван")
+        assert result[0]["key"] == "sofa_3seat"
+
+    def test_shelving_unit(self):
+        """'стеллаж' → shelving_unit."""
+        result = extract_items("стеллаж")
+        assert result[0]["key"] == "shelving_unit"
+
+    def test_shelving_unit_misspelled(self):
+        """'стелаж' (one л) → shelving_unit."""
+        result = extract_items("стелаж")
+        assert result[0]["key"] == "shelving_unit"
+
+    def test_exercise_machine(self):
+        """'тренажер' → exercise_machine."""
+        result = extract_items("тренажер")
+        assert result[0]["key"] == "exercise_machine"
+
+    def test_exercise_machine_yo(self):
+        """'тренажёр' (with ё) → exercise_machine."""
+        result = extract_items("тренажёр")
+        assert result[0]["key"] == "exercise_machine"
+
+    def test_garden_furniture(self):
+        """'садовая мебель' → garden_furniture."""
+        result = extract_items("садовая мебель")
+        assert result[0]["key"] == "garden_furniture"
+
+    def test_fridge_small(self):
+        """'маленький холодильник' → refrigerator_small."""
+        result = extract_items("маленький холодильник")
+        assert result[0]["key"] == "refrigerator_small"
+
+    def test_fridge_large(self):
+        """'большой холодильник' → refrigerator_large."""
+        result = extract_items("большой холодильник")
+        assert result[0]["key"] == "refrigerator_large"
+
+    def test_fridge_double_door(self):
+        """'двухдверный холодильник' → refrigerator_large."""
+        result = extract_items("двухдверный холодильник")
+        assert result[0]["key"] == "refrigerator_large"
+
+    def test_fridge_plain_unchanged(self):
+        """'холодильник' → refrigerator (mid-tier still default)."""
+        result = extract_items("холодильник")
+        assert result[0]["key"] == "refrigerator"
+
+    def test_mixed_new_items(self):
+        """Multiple new items in one string."""
+        result = extract_items("газовая плита, тренажер, 2 стеллажа, садовая мебель")
+        keys = {r["key"] for r in result}
+        assert "gas_stove" in keys
+        assert "exercise_machine" in keys
+        assert "garden_furniture" in keys
+
+    def test_new_items_labels(self):
+        """Item labels loaded for all new items."""
+        for key in ["gas_stove", "sofa_4seat", "sofa_5seat", "shelving_unit",
+                     "exercise_machine", "garden_furniture",
+                     "refrigerator_small", "refrigerator_large"]:
+            assert key in ITEM_LABELS, f"{key} missing from ITEM_LABELS"
+            assert "ru" in ITEM_LABELS[key], f"{key} missing 'ru' label"
+
+
 class TestWardrobeSizing:
     """Phase 11: wardrobe split into small/large with door aliases."""
 
@@ -3515,8 +3614,8 @@ class TestExtractItemsAttributeSafe:
         assert result[0]["qty"] == 5
 
     def test_bare_number_sanity_cap(self):
-        """'200 коробок' — bare number >20 → qty=1 (sanity cap)."""
-        result = extract_items("200 коробок")
+        """'300 коробок' — bare number >200 → qty=1 (sanity cap)."""
+        result = extract_items("300 коробок")
         assert len(result) == 1
         assert result[0]["qty"] == 1
 
@@ -3526,9 +3625,35 @@ class TestExtractItemsAttributeSafe:
         assert len(result) == 1
         assert result[0]["qty"] == 20
 
-    def test_bare_21_is_capped(self):
-        """'21 коробок' — boundary: 21 exceeds cap."""
+    def test_bare_21_accepted(self):
+        """'21 коробок' — now within raised cap (200)."""
         result = extract_items("21 коробок")
+        assert len(result) == 1
+        assert result[0]["qty"] == 21
+
+    def test_bare_80_boxes(self):
+        """'80 коробок' — real scenario: 80 boxes."""
+        result = extract_items("80 коробок")
+        assert len(result) == 1
+        assert result[0]["key"] == "box_standard"
+        assert result[0]["qty"] == 80
+
+    def test_80_sht_boxes(self):
+        """'80 шт коробок' — explicit marker, no cap."""
+        result = extract_items("80 шт коробок")
+        assert len(result) == 1
+        assert result[0]["key"] == "box_standard"
+        assert result[0]["qty"] == 80
+
+    def test_bare_200_boundary(self):
+        """'200 коробок' — boundary: 200 is within cap."""
+        result = extract_items("200 коробок")
+        assert len(result) == 1
+        assert result[0]["qty"] == 200
+
+    def test_bare_201_capped(self):
+        """'201 коробок' — boundary: 201 exceeds cap → qty=1."""
+        result = extract_items("201 коробок")
         assert len(result) == 1
         assert result[0]["qty"] == 1
 
@@ -3600,6 +3725,338 @@ class TestEstimatePriceWithQty:
         assert result["estimate_max"] == 949
 
 
+# ============================================================================
+# G6: Complexity scoring guard tests
+# ============================================================================
+
+
+class TestComplexityGuards:
+    """G6: Complexity scoring guard — multiplier + hard floor for premium moves."""
+
+    def test_config_loaded(self):
+        """Complexity config section is loaded from JSON."""
+        assert "complex_multiplier" in COMPLEXITY_GUARDS
+        assert "complex_min_floor" in COMPLEXITY_GUARDS
+        assert "score_threshold" in COMPLEXITY_GUARDS
+        assert COMPLEXITY_GUARDS["complex_multiplier"] == 1.18
+        assert COMPLEXITY_GUARDS["complex_min_floor"] == 7800
+
+    # -- Exemptions: small / None / medium never trigger complexity ----------
+
+    def test_no_complexity_small_volume(self):
+        """Small volume is exempt even with many other triggers."""
+        result = estimate_price(
+            volume_category="small",
+            extras=["assembly"],
+            route_band="inter_region_short",
+            extra_pickups=1,
+            pickup_floors=[(5, False)],
+            floor_to=5, has_elevator_to=False,
+        )
+        assert result["breakdown"]["complexity_applied"] is False
+        assert result["breakdown"]["complexity_score"] == 0
+
+    def test_no_complexity_no_volume(self):
+        """No volume category → complexity never triggers."""
+        result = estimate_price(
+            volume_category=None,
+            extras=["assembly"],
+            route_band="inter_region_short",
+        )
+        assert result["breakdown"]["complexity_applied"] is False
+        assert result["breakdown"]["complexity_score"] == 0
+
+    def test_no_complexity_medium_volume(self):
+        """Medium volume is not in eligible list → no complexity."""
+        result = estimate_price(
+            volume_category="medium",
+            extras=["assembly"],
+            route_band="inter_region_short",
+        )
+        assert result["breakdown"]["complexity_applied"] is False
+        assert result["breakdown"]["complexity_score"] == 0
+
+    # -- Score below threshold -----------------------------------------------
+
+    def test_score_below_threshold(self):
+        """XL volume alone → score=1, below threshold 2 → no multiplier."""
+        result = estimate_price(volume_category="xl")
+        assert result["breakdown"]["complexity_score"] == 1
+        assert result["breakdown"]["complexity_applied"] is False
+        # Same as before G6: base=150+xl=600=750, *0.85=637, xl_floor=800
+        assert result["estimate_min"] == 800
+        assert result["estimate_max"] == 863
+
+    def test_large_volume_only_score_1(self):
+        """Large volume alone → score=1 < threshold, no complexity."""
+        result = estimate_price(volume_category="large")
+        assert result["breakdown"]["complexity_score"] == 1
+        assert result["breakdown"]["complexity_applied"] is False
+        # base=150+large=350=500, *0.85=425, *1.15=575
+        assert result["estimate_min"] == 425
+        assert result["estimate_max"] == 575
+
+    # -- Score at threshold (2): multiplier YES, floor NO --------------------
+
+    def test_score_2_xl_route(self):
+        """XL + inter_region → score=2 → multiplier applied, floor NOT."""
+        result = estimate_price(
+            volume_category="xl",
+            route_band="inter_region_short",
+        )
+        # base=150 + xl=600 + route=500 = 1250
+        # G6: score=2 (volume_xl, route_inter_region_short), multiplier
+        # mid = 1250 * 1.18 * 1.08 = 1593.0
+        # 1593*0.85=1354.05→1354, 1593*1.15=1831.95→1832
+        # score=2 < min_floor_threshold=3 → no 7800 floor
+        assert result["breakdown"]["complexity_applied"] is True
+        assert result["breakdown"]["complexity_score"] == 2
+        assert "volume_xl" in result["breakdown"]["complexity_triggers"]
+        assert "route_inter_region_short" in result["breakdown"]["complexity_triggers"]
+        assert result["estimate_min"] == 1354
+        assert result["estimate_max"] == 1832
+        assert "complexity_guard" in result["breakdown"]["guards_applied"]
+        assert "complex_min_floor" not in result["breakdown"]["guards_applied"]
+
+    def test_score_2_large_assembly(self):
+        """Large + assembly → score=2 → multiplier applied."""
+        result = estimate_price(
+            volume_category="large",
+            extras=["assembly"],
+        )
+        # base=150 + large=350 + assembly→disassembly=80 = 580
+        # G6: score=2 (volume_large, assembly)
+        # mid = 580 * 1.18 * 1.08 = 739.224
+        # 739.224*0.85=628.34→628, 739.224*1.15=850.11→851
+        assert result["breakdown"]["complexity_applied"] is True
+        assert result["breakdown"]["complexity_score"] == 2
+        assert result["estimate_min"] == 628
+        assert result["estimate_max"] == 851
+
+    # -- Score at 3: multiplier + hard floor ---------------------------------
+
+    def test_score_3_triggers_min_floor(self):
+        """XL + assembly + route → score=3 → min_floor=7800 applied."""
+        result = estimate_price(
+            volume_category="xl",
+            extras=["assembly"],
+            route_band="inter_region_short",
+        )
+        # base=150 + xl=600 + assembly→disassembly=80 + route=500 = 1330
+        # G6: score=3 (volume_xl, assembly, route_inter_region_short)
+        # mid = 1330 * 1.18 * 1.08 = 1694.664
+        # 1694.664*0.85=1440.46→1440, 1694.664*1.15=1948.86→1949
+        # score=3 >= min_floor_threshold=3 → complex_min_floor=7800 applies
+        assert result["breakdown"]["complexity_applied"] is True
+        assert result["breakdown"]["complexity_score"] == 3
+        assert result["estimate_min"] == 7800
+        assert result["estimate_max"] == 7800
+        assert "complex_min_floor" in result["breakdown"]["guards_applied"]
+        assert "complexity_guard" in result["breakdown"]["guards_applied"]
+
+    def test_score_4_triggers(self):
+        """XL + assembly + route + multi-pickup → score=4."""
+        result = estimate_price(
+            volume_category="xl",
+            extras=["assembly"],
+            route_band="inter_region_short",
+            extra_pickups=1,
+        )
+        # base=150 + xl=600 + assembly=80 + route=500 + pickup=70 = 1400
+        # G6: score=4 (volume_xl, assembly, multi_pickup, route)
+        # min_floor_score=3 met → complex_min_floor=7800
+        assert result["breakdown"]["complexity_score"] == 4
+        assert result["breakdown"]["complexity_applied"] is True
+        assert result["estimate_min"] == 7800
+        assert "complex_min_floor" in result["breakdown"]["guards_applied"]
+
+    def test_score_5_all_triggers(self):
+        """All 5 triggers → score=5, items push estimate above floor."""
+        result = estimate_price(
+            volume_category="xl",
+            extras=["assembly"],
+            route_band="inter_region_long",
+            extra_pickups=1,
+            pickup_floors=[(6, False)],
+            floor_to=2, has_elevator_to=True,
+            items=[
+                {"key": "wardrobe_large", "qty": 4},
+                {"key": "sofa_3seat", "qty": 2},
+                {"key": "refrigerator", "qty": 1},
+                {"key": "bed_double", "qty": 1},
+                {"key": "washing_machine", "qty": 1},
+                {"key": "box_standard", "qty": 10},
+                {"key": "bag_suitcase", "qty": 35},
+            ],
+        )
+        assert result["breakdown"]["complexity_score"] == 5
+        assert result["breakdown"]["complexity_applied"] is True
+        assert len(result["breakdown"]["complexity_triggers"]) == 5
+        # With so many items + multiplier, estimate_min should be >= 7800
+        assert result["estimate_min"] >= 7800
+        assert result["estimate_max"] >= result["estimate_min"]
+        assert "complexity_guard" in result["breakdown"]["guards_applied"]
+
+    # -- Risk buffer only on complex -----------------------------------------
+
+    def test_risk_buffer_only_complex(self):
+        """Simple move (score<2) gets NO risk buffer."""
+        # score=0 (no volume)
+        result_simple = estimate_price()
+        # base=150, mid=150, no buffer
+        # 150*0.85=127.5→127, 150*1.15=172.5→173
+        assert result_simple["estimate_min"] == 127
+        assert result_simple["estimate_max"] == 173
+        assert result_simple["breakdown"]["complexity_applied"] is False
+
+    # -- Breakdown fields ----------------------------------------------------
+
+    def test_breakdown_includes_complexity_fields(self):
+        """Breakdown always includes complexity fields, even when not applied."""
+        result = estimate_price()
+        bd = result["breakdown"]
+        assert "complexity_score" in bd
+        assert "complexity_triggers" in bd
+        assert "complexity_applied" in bd
+        assert bd["complexity_score"] == 0
+        assert bd["complexity_triggers"] == []
+        assert bd["complexity_applied"] is False
+
+    # -- Items combine with complexity multiplier ----------------------------
+
+    def test_complexity_with_items(self):
+        """XL + assembly + items → items_mid is multiplied by complexity."""
+        result = estimate_price(
+            volume_category="xl",
+            extras=["assembly"],
+            items=[{"key": "wardrobe_large", "qty": 2}],
+        )
+        # base=150 + xl=600 + assembly=80 = 830
+        # items_mid = (250+400)/2 * 2 = 650
+        # fixed=830, mid=830+650=1480
+        # G6: score=2 (volume_xl, assembly)
+        # mid = 1480 * 1.18 * 1.08 = 1886.112
+        # floor(1886.112*0.85)=floor(1603.1952)=1603
+        # ceil(1886.112*1.15)=ceil(2169.0288)=2170
+        assert result["breakdown"]["complexity_applied"] is True
+        assert result["breakdown"]["complexity_score"] == 2
+        assert result["breakdown"]["items_mid"] == 650.0
+        assert result["estimate_min"] == 1603
+        assert result["estimate_max"] == 2170
+
+    # -- Route band edge cases -----------------------------------------------
+
+    def test_same_city_xl_no_route_trigger(self):
+        """XL + same_city route → route NOT in trigger list → score=1."""
+        result = estimate_price(
+            volume_category="xl",
+            route_band="same_city",
+        )
+        assert result["breakdown"]["complexity_score"] == 1
+        assert result["breakdown"]["complexity_applied"] is False
+
+    # -- Floor trigger edge cases --------------------------------------------
+
+    def test_floor_4_no_trigger(self):
+        """Floor 4 without elevator → below floor threshold 5 → no trigger."""
+        result = estimate_price(
+            volume_category="xl",
+            pickup_floors=[(4, False)],
+            floor_to=1, has_elevator_to=True,
+        )
+        # score=1 (volume_xl only), floor 4 < 5
+        assert result["breakdown"]["complexity_score"] == 1
+        assert "high_floor_no_elevator" not in result["breakdown"]["complexity_triggers"]
+
+    def test_floor_5_triggers(self):
+        """Floor 5 without elevator → triggers high_floor complexity."""
+        result = estimate_price(
+            volume_category="xl",
+            pickup_floors=[(5, False)],
+            floor_to=1, has_elevator_to=True,
+        )
+        # score=2 (volume_xl + high_floor_no_elevator)
+        assert result["breakdown"]["complexity_score"] == 2
+        assert "high_floor_no_elevator" in result["breakdown"]["complexity_triggers"]
+        assert result["breakdown"]["complexity_applied"] is True
+
+
+class TestDetectVolumeFromItems:
+    """G6 fix: infer volume_category from extracted cargo items."""
+
+    def test_config_loaded(self):
+        """volume_from_items config section is loaded from JSON."""
+        assert "heavy_keys" in VOLUME_FROM_ITEMS_CONFIG
+        assert "xl_items_mid" in VOLUME_FROM_ITEMS_CONFIG
+        assert "large_heavy_count" in VOLUME_FROM_ITEMS_CONFIG
+
+    def test_xl_by_items_mid(self):
+        """items_mid >= 1500 → 'xl'."""
+        # 4 sofa_3seat (mid=225 each) + 4 wardrobe_large (mid=200 each)
+        # items_mid = 4*225 + 4*200 = 900 + 800 = 1700 >= 1500
+        items = [
+            {"key": "sofa_3seat", "qty": 4},
+            {"key": "wardrobe_large", "qty": 4},
+        ]
+        assert detect_volume_from_items(items) == "xl"
+
+    def test_xl_by_heavy_count(self):
+        """4 heavy items → 'xl'."""
+        items = [
+            {"key": "sofa_3seat", "qty": 1},
+            {"key": "refrigerator", "qty": 1},
+            {"key": "washing_machine", "qty": 1},
+            {"key": "bed_double", "qty": 1},
+        ]
+        assert detect_volume_from_items(items) == "xl"
+
+    def test_large_by_items_mid(self):
+        """items_mid >= 700 → 'large'."""
+        # sofa_3seat mid=225, refrigerator mid=240, box_standard x10 mid=175
+        # total = 225 + 240 + 175 = 640 < 700... need more
+        # sofa_3seat mid=225, wardrobe_large mid=200, refrigerator mid=240,
+        # box x5 mid=87.5 → total = 752.5 >= 700
+        items = [
+            {"key": "sofa_3seat", "qty": 1},
+            {"key": "wardrobe_large", "qty": 1},
+            {"key": "refrigerator", "qty": 1},
+            {"key": "box_standard", "qty": 5},
+        ]
+        # Also has 3 heavy items → xl by heavy count (3 >= 2? yes, but
+        # need to check: heavy_count=3 >= xl_heavy_count=4? No → large)
+        assert detect_volume_from_items(items) == "large"
+
+    def test_large_by_heavy_count(self):
+        """2 heavy items → 'large'."""
+        items = [
+            {"key": "sofa_3seat", "qty": 1},
+            {"key": "refrigerator", "qty": 1},
+        ]
+        assert detect_volume_from_items(items) == "large"
+
+    def test_medium_by_items_mid(self):
+        """items_mid >= 300 → 'medium'."""
+        # 20 boxes: mid = 20 * 17.5 = 350 >= 300
+        items = [{"key": "box_standard", "qty": 20}]
+        assert detect_volume_from_items(items) == "medium"
+
+    def test_none_below_threshold(self):
+        """Small item total → None."""
+        items = [{"key": "box_standard", "qty": 2}]
+        assert detect_volume_from_items(items) is None
+
+    def test_empty_items(self):
+        """Empty or None → None."""
+        assert detect_volume_from_items([]) is None
+        assert detect_volume_from_items(None) is None
+
+    def test_item_labels_loaded(self):
+        """item_labels config section is loaded for crew localization."""
+        assert "sofa_3seat" in ITEM_LABELS
+        assert ITEM_LABELS["sofa_3seat"]["ru"] == "Диван"
+        assert ITEM_LABELS["box_standard"]["en"] == "Box"
+
+
 class TestCargoItemExtraction:
     """Test that item extraction flows from handler into estimate."""
 
@@ -3631,18 +4088,30 @@ class TestCargoItemExtraction:
         # items_mid should be non-zero
         assert state.data.custom["estimate_breakdown"]["items_mid"] > 0
 
-    def test_no_items_estimate_unchanged(self):
-        """Cargo with no recognizable items -> items_mid stays 0."""
+    def test_no_items_estimate_suppressed(self):
+        """Cargo with no recognizable items and long text -> estimate suppressed."""
         state = self.handler.new_session("t1", "chat1")
         state.step = "cargo"
         state, _, _ = self.handler.handle_text(state, "Разные мелкие вещи для переезда")
         assert state.data.custom["cargo_items"] == []
         state.step = "extras"
         state, reply, done = self.handler.handle_text(state, "4")
-        assert state.data.custom["estimate_breakdown"]["items_mid"] == 0.0
-        # base only: 150*0.85=127.5→127, 150*1.15=172.5→173
-        assert state.data.custom["estimate_min"] == 127
-        assert state.data.custom["estimate_max"] == 173
+        assert state.step == "estimate"
+        # Long raw, no items, no volume → estimate suppressed
+        assert state.data.custom.get("estimate_suppressed") is True
+        assert "estimate_min" not in state.data.custom
+        assert "estimate_max" not in state.data.custom
+
+    def test_no_items_short_raw_estimate_normal(self):
+        """Cargo with no recognizable items but short text -> estimate shown."""
+        state = self.handler.new_session("t1", "chat1")
+        state.data.custom["cargo_raw"] = "мелочь"  # short: 6 chars
+        state.data.custom["cargo_items"] = []
+        state.data.custom["volume_category"] = "small"
+        state.step = "extras"
+        state, reply, done = self.handler.handle_text(state, "4")
+        assert state.data.custom.get("estimate_suppressed") is not True
+        assert "estimate_min" in state.data.custom
 
 
 # ============================================================================
@@ -3817,7 +4286,7 @@ class TestCargoRoomVolumeDetection:
 
     @patch(_OP_CFG_PATCH)
     def test_cargo_with_items_skips_volume(self, mock_op_cfg):
-        """CARGO with recognized items → PICKUP_COUNT (skip volume)."""
+        """CARGO with heavy items → PICKUP_COUNT + volume inferred from items."""
         mock_op_cfg.return_value = _op_cfg_with_phone(None)
         state = self.handler.new_session("t1", "chat1")
         state.step = "cargo"
@@ -3825,9 +4294,11 @@ class TestCargoRoomVolumeDetection:
             state, "Диван, холодильник, 5 коробок"
         )
         assert state.step == "pickup_count"
-        assert "volume_category" not in state.data.custom
+        # Volume is now inferred from items (sofa + fridge = 2 heavy → "large")
+        assert state.data.custom["volume_category"] == "large"
+        assert state.data.custom["volume_from_items"] is True
         assert "volume_from_rooms" not in state.data.custom
-        # But items ARE extracted
+        # Items ARE extracted
         assert len(state.data.custom.get("cargo_items", [])) > 0
 
     @patch(_OP_CFG_PATCH)
@@ -4493,3 +4964,334 @@ class TestEstimateStructuredLogging:
             assert "route_band" in extra
             assert "guards_applied" in extra
             assert "pickup_count" in extra
+
+
+# ===================================================================
+# Fix: Sofa space-variant aliases ("5 местный диван" → sofa_5seat)
+# ===================================================================
+
+
+class TestSofaSpaceVariantAliases:
+    """Verify '5 местный диван' (space, not hyphen) maps correctly."""
+
+    def test_5_mestny_space(self):
+        """'5 местный диван' → sofa_5seat x1."""
+        items = extract_items("5 местный диван")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("sofa_5seat") == 1
+        assert "sofa_3seat" not in found
+
+    def test_4_mestny_space(self):
+        """'4 местный диван' → sofa_4seat x1."""
+        items = extract_items("4 местный диван")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("sofa_4seat") == 1
+        assert "sofa_3seat" not in found
+
+    def test_3_mestny_space(self):
+        """'3 местный диван' → sofa_3seat x1."""
+        items = extract_items("3 местный диван")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("sofa_3seat") == 1
+
+    def test_2_mestny_space(self):
+        """'2 местный диван' → sofa_2seat x1."""
+        items = extract_items("2 местный диван")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("sofa_2seat") == 1
+        assert "sofa_3seat" not in found
+
+    def test_plain_divan_no_regression(self):
+        """Plain 'диван' still maps to sofa_3seat x1 (no regression)."""
+        items = extract_items("диван")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("sofa_3seat") == 1
+
+    def test_attr_suffix_mestny(self):
+        """_ATTR_SUFFIXES matches '5 местный' so bare 5 is not qty."""
+        assert _ATTR_SUFFIXES.search("5 местный")
+        assert _ATTR_SUFFIXES.search("5-местный")
+
+    def test_5_seater_sofa(self):
+        """'5-seater sofa' → sofa_5seat x1."""
+        items = extract_items("5-seater sofa")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("sofa_5seat") == 1
+
+    def test_attr_suffix_seater(self):
+        """_ATTR_SUFFIXES matches '5-seater' so bare 5 is not qty."""
+        assert _ATTR_SUFFIXES.search("5-seater")
+        assert _ATTR_SUFFIXES.search("5 seater")
+
+
+# ===================================================================
+# Fix: Children's bed aliases ("детская кровать" → bed_single)
+# ===================================================================
+
+
+class TestChildrenBedAliases:
+    """Verify 'детская кровать' maps to bed_single, not bed_double."""
+
+    def test_detskaya_krovat(self):
+        """'детская кровать' → bed_single x1."""
+        items = extract_items("детская кровать")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("bed_single") == 1
+        assert "bed_double" not in found
+
+    def test_detskaya_krovatka(self):
+        """'детская кроватка' → bed_single x1."""
+        items = extract_items("детская кроватка")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("bed_single") == 1
+        assert "bed_double" not in found
+
+    def test_detskaya_and_plain_separate(self):
+        """'детская кровать и кровать' → bed_single x1 + bed_double x1."""
+        items = extract_items("детская кровать и кровать")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("bed_single") == 1
+        assert found.get("bed_double") == 1
+
+    def test_kids_bed_english(self):
+        """'kids bed' → bed_single x1."""
+        items = extract_items("kids bed")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("bed_single") == 1
+
+    def test_children_bed_hebrew(self):
+        """'מיטת ילדים' → bed_single x1."""
+        items = extract_items("מיטת ילדים")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("bed_single") == 1
+
+
+# ===================================================================
+# Fix: Mattress item (new in catalog)
+# ===================================================================
+
+
+class TestMattressItem:
+    """Verify mattress is in catalog and recognised."""
+
+    def test_matras(self):
+        """'матрас' → mattress x1."""
+        items = extract_items("матрас")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("mattress") == 1
+
+    def test_matras_double_s(self):
+        """'матрасс' (common misspelling) → mattress x1."""
+        items = extract_items("матрасс")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("mattress") == 1
+
+    def test_matrats(self):
+        """'матрац' (alternative form) → mattress x1."""
+        items = extract_items("матрац")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("mattress") == 1
+
+    def test_2_matrasy(self):
+        """'2 матрасы' → mattress x2."""
+        items = extract_items("2 матрасы")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("mattress") == 2
+
+    def test_mattress_in_catalog(self):
+        """Mattress price range is (60, 120)."""
+        assert "mattress" in ITEM_CATALOG
+        lo, hi = ITEM_CATALOG["mattress"]
+        assert lo == 60
+        assert hi == 120
+
+    def test_mattress_not_heavy(self):
+        """Mattress is NOT a heavy item."""
+        heavy_keys = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "mattress" not in heavy_keys
+
+    def test_mattress_label(self):
+        """Mattress has labels in all 3 languages."""
+        assert "mattress" in ITEM_LABELS
+        assert ITEM_LABELS["mattress"]["ru"] == "Матрас"
+        assert ITEM_LABELS["mattress"]["en"] == "Mattress"
+        assert ITEM_LABELS["mattress"]["he"] == "מזרן"
+
+    def test_mattress_english(self):
+        """'mattress' (English) → mattress x1."""
+        items = extract_items("mattress")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("mattress") == 1
+
+    def test_mattress_hebrew(self):
+        """'מזרן' (Hebrew) → mattress x1."""
+        items = extract_items("מזרן")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("mattress") == 1
+
+
+# ===================================================================
+# Fix: Combined scenario (all four bugs together)
+# ===================================================================
+
+
+class TestCombinedItemExtractionFixes:
+    """Verify the exact user scenario that triggered the bug report."""
+
+    def test_combined_5_mestny_detskaya_matras(self):
+        """'5 местный диван, детская кровать, 2 матрасы, кровать' →
+        sofa_5seat x1, bed_single x1, mattress x2, bed_double x1."""
+        items = extract_items("5 местный диван, детская кровать, 2 матрасы, кровать")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("sofa_5seat") == 1, f"Expected sofa_5seat=1, got {found}"
+        assert found.get("bed_single") == 1, f"Expected bed_single=1, got {found}"
+        assert found.get("mattress") == 2, f"Expected mattress=2, got {found}"
+        assert found.get("bed_double") == 1, f"Expected bed_double=1, got {found}"
+        # Must NOT have sofa_3seat or duplicate beds
+        assert "sofa_3seat" not in found
+
+    def test_original_bug_report(self):
+        """The original report: '5 местный диван, детская кровать, кровать, матрас'.
+        Should NOT be sofas x5 + bed x2 + no mattress."""
+        items = extract_items("5 местный диван, детская кровать, кровать, матрас")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("sofa_5seat") == 1
+        assert found.get("bed_single") == 1
+        assert found.get("bed_double") == 1
+        assert found.get("mattress") == 1
+        # Total unique items: 4
+        assert len(found) == 4
+
+
+# ===================================================================
+# Estimate suppression fallback
+# ===================================================================
+
+
+class TestEstimateSuppression:
+    """Verify estimate is suppressed when parsing quality is low."""
+
+    def setup_method(self):
+        self.handler = MovingBotHandler()
+
+    def test_estimate_suppressed_when_no_items(self):
+        """Long cargo_raw with 0 extracted items → estimate suppressed."""
+        state = self.handler.new_session("t1", "chat1")
+        # Simulate: user wrote lots of unrecognised text
+        state.data.custom["cargo_raw"] = "у нас много всякого барахла и разных штук которые нужно перевезти в другой город"
+        state.data.custom["cargo_items"] = []
+        # No volume_category
+        state.step = "extras"
+
+        # Go through extras → estimate
+        state, reply, done = self.handler.handle_text(state, "4")  # none extras
+        assert state.step == "estimate"
+        assert state.data.custom.get("estimate_suppressed") is True
+        assert "estimate_min" not in state.data.custom
+        assert "estimate_max" not in state.data.custom
+        # Reply should be the no-price message
+        assert "менеджер" in reply.lower() or "manager" in reply.lower() or "מנהל" in reply
+
+    def test_estimate_shown_when_items_extracted(self):
+        """Cargo with recognised items → normal estimate (not suppressed)."""
+        state = self.handler.new_session("t1", "chat1")
+        state.data.custom["cargo_raw"] = "диван, холодильник, 5 коробок"
+        state.data.custom["cargo_items"] = extract_items("диван, холодильник, 5 коробок")
+        state.data.custom["volume_category"] = "large"
+        state.step = "extras"
+
+        state, reply, done = self.handler.handle_text(state, "4")  # none extras
+        assert state.step == "estimate"
+        assert state.data.custom.get("estimate_suppressed") is not True
+        assert "estimate_min" in state.data.custom
+        assert "estimate_max" in state.data.custom
+
+    def test_estimate_shown_when_short_raw(self):
+        """Short cargo_raw (≤30 chars) → normal estimate even with 0 items."""
+        state = self.handler.new_session("t1", "chat1")
+        state.data.custom["cargo_raw"] = "всякое барахло"  # 14 chars
+        state.data.custom["cargo_items"] = []
+        state.data.custom["volume_category"] = "small"
+        state.step = "extras"
+
+        state, reply, done = self.handler.handle_text(state, "4")
+        assert state.step == "estimate"
+        # Not suppressed because cargo_raw ≤ 30 chars (and has volume_category)
+        assert state.data.custom.get("estimate_suppressed") is not True
+        assert "estimate_min" in state.data.custom
+
+    def test_estimate_shown_when_volume_exists(self):
+        """Long raw but volume_category set → estimate shown (rooms detection worked)."""
+        state = self.handler.new_session("t1", "chat1")
+        state.data.custom["cargo_raw"] = "переезд из трёхкомнатной квартиры, много всего разного"
+        state.data.custom["cargo_items"] = []
+        state.data.custom["volume_category"] = "large"  # inferred from rooms
+        state.step = "extras"
+
+        state, reply, done = self.handler.handle_text(state, "4")
+        assert state.step == "estimate"
+        assert state.data.custom.get("estimate_suppressed") is not True
+        assert "estimate_min" in state.data.custom
+
+
+# ===================================================================
+# Crew view: estimate suppression
+# ===================================================================
+
+
+class TestCrewViewEstimateSuppression:
+    """Verify crew message omits estimate when suppressed."""
+
+    def test_crew_view_no_estimate_when_suppressed(self):
+        from app.core.dispatch.crew_view import format_crew_message
+
+        payload = {
+            "data": {
+                "floor_from": "3",
+                "floor_to": "2",
+                "time_window": "morning",
+                "extras": [],
+                "custom": {
+                    "lead_number": 42,
+                    "volume_category": None,
+                    "route_classification": {
+                        "from_locality": "Tel Aviv",
+                        "to_locality": "Haifa",
+                    },
+                    "cargo_items": [],
+                    "estimate_suppressed": True,
+                    # No estimate_min / estimate_max
+                },
+            },
+        }
+        msg = format_crew_message("test-lead-id", payload)
+        # Should NOT contain estimate line
+        assert "₪" not in msg
+        # Should still contain other info
+        assert "#42" in msg
+
+    def test_crew_view_shows_estimate_normally(self):
+        from app.core.dispatch.crew_view import format_crew_message
+
+        payload = {
+            "data": {
+                "floor_from": "3",
+                "floor_to": "2",
+                "time_window": "morning",
+                "extras": [],
+                "custom": {
+                    "lead_number": 43,
+                    "volume_category": "large",
+                    "route_classification": {
+                        "from_locality": "Tel Aviv",
+                        "to_locality": "Haifa",
+                    },
+                    "cargo_items": [],
+                    "estimate_min": 1500,
+                    "estimate_max": 2000,
+                },
+            },
+        }
+        msg = format_crew_message("test-lead-id", payload)
+        assert "₪1500–₪2000" in msg
+        assert "#43" in msg

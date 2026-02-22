@@ -150,6 +150,8 @@ class RouteClassification:
     to_locality: str | None
     from_region: int | None      # CBS region code
     to_region: int | None
+    from_names: dict[str, str] | None = None   # {"he": "...", "ru": "...", "en": "..."}
+    to_names: dict[str, str] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -246,6 +248,15 @@ def classify_route(addr_from: str, addr_to: str) -> RouteClassification:
     from_region = loc_from.region if loc_from else None
     to_region = loc_to.region if loc_to else None
 
+    from_names = (
+        {"he": loc_from.he, "en": loc_from.en or "", "ru": loc_from.ru or ""}
+        if loc_from else None
+    )
+    to_names = (
+        {"he": loc_to.he, "en": loc_to.en or "", "ru": loc_to.ru or ""}
+        if loc_to else None
+    )
+
     def _result(band: RouteBand) -> RouteClassification:
         return RouteClassification(
             band=band,
@@ -253,6 +264,8 @@ def classify_route(addr_from: str, addr_to: str) -> RouteClassification:
             to_locality=to_name,
             from_region=from_region,
             to_region=to_region,
+            from_names=from_names,
+            to_names=to_names,
         )
 
     # 1. Either locality unknown -> conservative fallback
