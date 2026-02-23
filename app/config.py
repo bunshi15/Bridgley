@@ -156,6 +156,9 @@ class Settings(BaseSettings):
     # Dispatch Layer — Iteration 1: Operator Fallback (Manual Copy)
     dispatch_crew_fallback_enabled: bool = False  # Send crew-safe copy-paste message alongside full lead
 
+    # Estimate Display Control
+    estimate_display_enabled: bool = True  # False = hide price from user & crew; operator still sees it
+
     # Feature Flags
     require_webhook_validation: bool = True
     enable_request_logging: bool = True

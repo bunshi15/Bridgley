@@ -298,7 +298,7 @@ class TestMovingBotPricing:
 
     def test_item_catalog_has_entries(self):
         assert len(ITEM_CATALOG) > 0
-        assert "refrigerator" in ITEM_CATALOG
+        assert "fridge_single_door" in ITEM_CATALOG
         assert "box_standard" in ITEM_CATALOG
 
     def test_item_catalog_values_are_ranges(self):
@@ -1421,7 +1421,7 @@ class TestEstimatePrice:
 
     def test_with_items(self):
         """Items use midpoint-based estimate (v1.1)."""
-        result = estimate_price(items=["refrigerator", "box_standard"])
+        result = estimate_price(items=["fridge_single_door", "box_standard"])
         # refrigerator mid=(200+280)/2=240, box_standard mid=(15+20)/2=17.5
         # items_mid=257.5, fixed=150, mid=407.5
         # 407.5*0.85=346.375→346, 407.5*1.15=468.625→469
@@ -1703,8 +1703,8 @@ class TestFullFlowWithEstimate:
         # Floor to: 5 этаж, лифт есть → floor=5, elevator → no surcharge
         # Volume: inferred "large" from items (2 heavy: sofa+fridge) → surcharge=350
         # Extras: loaders (no pricing adj), packing (no pricing adj) → 0
-        # Items (Phase 10): Диван→sofa_3seat(225) + холодильник→refrigerator(240) + 5 коробок→box_standard(87.5)
-        # Route: Хайфа→Тель-Авив = inter_region_short → route_fee=500, route_minimum=1100
+        # Items (Phase 10): Диван→sofa_large_3_seat(225) + холодильник→fridge_single_door(240) + 5 коробок→box_standard(87.5)
+        # Route: Хайфа→Тель-Авив = inter_region_short → route_fee=500, route_minimum=1000
         # fixed=150+100+350+500=1100, items_mid=552.5, mid=1652.5
         # G6 complexity: score=2 (volume_large + route), multiplier=1.18, risk=1.08
         # mid=1652.5*1.18*1.08=2105.946 → min=floor(2105.946*0.85)=1790, max=ceil(2105.946*1.15)=2422
@@ -1897,9 +1897,9 @@ class TestTwoPickupFlow:
         state, reply, done = self.handler.handle_text(state, "4")
         assert state.step == "estimate"
         # base=150 + extra_pickup=70 + route_fee=500 (Хайфа→Тель-Авив, inter_region_short) = 720
-        # 720*0.85=612, 720*1.15=828 → route_minimum=1100 applies
-        assert state.data.custom["estimate_min"] == 1100
-        assert state.data.custom["estimate_max"] == 1100
+        # 720*0.85=612, 720*1.15=828 → route_minimum=1000 applies
+        assert state.data.custom["estimate_min"] == 1000
+        assert state.data.custom["estimate_max"] == 1000
 
 
 class TestThreePickupFlow:
@@ -1964,10 +1964,10 @@ class TestThreePickupFlow:
         state, reply, done = self.handler.handle_text(state, "4")
         assert state.step == "estimate"
         # base=150 + floor_surcharge=(100+0+150)=250 + extra_pickups=2*70=140
-        # Route: Хайфа→Тель-Авив = inter_region_short → route_fee=500, route_minimum=1100
+        # Route: Хайфа→Тель-Авив = inter_region_short → route_fee=500, route_minimum=1000
         # total=150+250+140+500=1040 → 1040*0.85=884, 1040*1.15=1196
-        # route_minimum=1100 → estimate_min=1100
-        assert state.data.custom["estimate_min"] == 1100
+        # route_minimum=1000 → estimate_min=1000
+        assert state.data.custom["estimate_min"] == 1000
         assert state.data.custom["estimate_max"] == 1196
 
 
@@ -2198,13 +2198,13 @@ class TestFullFlowTwoPickupsWithEstimate:
         assert state.step == "estimate"
         assert "₪" in reply
         # pickup1: (3-1)*50=100, pickup2: floor 1→0, delivery: floor 2→0
-        # extra_pickups=1 → 70, volume: small → 0
-        # Items (Phase 10): Диван→sofa_3seat(225) + 3 коробки→box_standard(52.5)
-        # Route: Хайфа→Тель-Авив = inter_region_short → route_fee=500, route_minimum=1100
+        # extra_pickups=1 → 70, volume: None → 0
+        # Items (Phase 10): Диван→sofa_large_3_seat(225) + 3 коробки→box_standard(52.5)
+        # Route: Хайфа→Тель-Авив = inter_region_short → route_fee=500, route_minimum=1000
         # fixed=150+100+70+500=820, items_mid=277.5, mid=1097.5
         # 1097.5*0.85=932, 1097.5*1.15=1263 (ceil)
-        # route_minimum=1100 → estimate_min=1100
-        assert state.data.custom["estimate_min"] == 1100
+        # route_minimum=1000 → estimate_min=1000
+        assert state.data.custom["estimate_min"] == 1000
         assert state.data.custom["estimate_max"] == 1263
 
         # ESTIMATE → DONE
@@ -2458,7 +2458,7 @@ class TestPricingV11Midpoint:
     def test_single_item_midpoint(self):
         """Single item uses midpoint of (min, max) range."""
         # refrigerator: (200, 280) → mid = 240
-        result = estimate_price(items=["refrigerator"])
+        result = estimate_price(items=["fridge_single_door"])
         # fixed=150 + items_mid=240 = 390
         # 390*0.85=331.5→331, 390*1.15=448.5→449
         assert result["estimate_min"] == 331
@@ -2467,7 +2467,7 @@ class TestPricingV11Midpoint:
     def test_multiple_items_midpoint(self):
         """Multiple items: sum of midpoints."""
         # sofa_2seat (150,200) mid=175, desk (100,150) mid=125
-        result = estimate_price(items=["sofa_2seat", "desk"])
+        result = estimate_price(items=["sofa_small_2_seat", "desk"])
         # fixed=150 + items_mid=300 = 450
         # 450*0.85=382.5→382, 450*1.15=517.5→518
         assert result["estimate_min"] == 382
@@ -2501,7 +2501,7 @@ class TestPricingV11Midpoint:
 
     def test_large_item_set_midpoint(self):
         """Many items — midpoint reduces spread vs old v1.0 approach."""
-        items = ["refrigerator", "sofa_3seat", "wardrobe_large", "bed_double"]
+        items = ["fridge_single_door", "sofa_large_3_seat", "wardrobe_3_doors", "bed_double"]
         result = estimate_price(items=items)
         # refrigerator mid=240, sofa_3seat mid=225, wardrobe_large mid=325, bed_double mid=215
         # items_mid = 1005
@@ -2512,7 +2512,7 @@ class TestPricingV11Midpoint:
 
     def test_symmetric_margin(self):
         """Margin is symmetric: same % above and below midpoint."""
-        result = estimate_price(items=["refrigerator"])
+        result = estimate_price(items=["fridge_single_door"])
         # mid=390
         mid = 390
         assert mid - result["estimate_min"] <= mid * 0.15 + 1  # allow rounding
@@ -2551,7 +2551,7 @@ class TestDistanceFactor:
     def test_factor_with_items(self):
         """distance_factor applies to the total mid (fixed + items)."""
         cfg = PricingConfig(distance_factor=1.5)
-        result = estimate_price(items=["refrigerator"], pricing=cfg)
+        result = estimate_price(items=["fridge_single_door"], pricing=cfg)
         # fixed=150 + items_mid=240 = 390
         # 390 * 1.5 = 585
         # 585*0.85=497.25→497, 585*1.15=672.75→673
@@ -2590,7 +2590,7 @@ class TestDistanceFactor:
 
     def test_items_mid_in_breakdown(self):
         """items_mid (not items_range) appears in v1.1 breakdown."""
-        result = estimate_price(items=["refrigerator", "box_standard"])
+        result = estimate_price(items=["fridge_single_door", "box_standard"])
         bd = result["breakdown"]
         assert "items_mid" in bd
         # refrigerator mid=240, box_standard mid=17.5
@@ -2919,13 +2919,13 @@ class TestVolumePricingImpact:
         assert result["estimate_max"] == 575
 
     def test_xl_volume_surcharge(self):
-        """XL volume → surcharge = 600, XL guard floor = 800."""
+        """XL volume → surcharge = 500, XL guard floor = 700."""
         result = estimate_price(volume_category="xl")
-        assert result["breakdown"]["volume_surcharge"] == 600
-        # 150+600=750 → 750*0.85=637.5→637, 750*1.15=862.5→863
-        # XL guard floor=800 → estimate_min bumped to 800
-        assert result["estimate_min"] == 800
-        assert result["estimate_max"] == 863
+        assert result["breakdown"]["volume_surcharge"] == 500
+        # 150+500=650 → 650*0.85=552.5→552, 650*1.15=747.5→748
+        # XL guard floor=700 → estimate_min bumped to 700
+        assert result["estimate_min"] == 700
+        assert result["estimate_max"] == 748
 
     def test_no_volume_backward_compat(self):
         """No volume category → surcharge = 0 (backward compat)."""
@@ -2961,11 +2961,11 @@ class TestVolumePricingImpact:
         state.step = "extras"
         state, reply, done = handler.handle_text(state, "4")
         assert state.step == "estimate"
-        # base=150 + xl=600 = 750
-        # XL guard floor=800 → estimate_min bumped to 800
-        assert state.data.custom["estimate_breakdown"]["volume_surcharge"] == 600
-        assert state.data.custom["estimate_min"] == 800
-        assert state.data.custom["estimate_max"] == 863
+        # base=150 + xl=500 = 650
+        # XL guard floor=700 → estimate_min bumped to 700
+        assert state.data.custom["estimate_breakdown"]["volume_surcharge"] == 500
+        assert state.data.custom["estimate_min"] == 700
+        assert state.data.custom["estimate_max"] == 748
 
 
 class TestVolumeTranslationKeys:
@@ -3029,7 +3029,7 @@ class TestPricingConfigJSON:
         assert VOLUME_CATEGORIES["small"] == 0
         assert VOLUME_CATEGORIES["medium"] == 150
         assert VOLUME_CATEGORIES["large"] == 350
-        assert VOLUME_CATEGORIES["xl"] == 600
+        assert VOLUME_CATEGORIES["xl"] == 500
 
     def test_extras_adjustments_loaded(self):
         assert EXTRAS_ADJUSTMENTS["narrow_stairs"] == 60
@@ -3039,8 +3039,8 @@ class TestPricingConfigJSON:
         assert EXTRAS_ADJUSTMENTS["client_helps"] == -60
 
     def test_item_catalog_loaded(self):
-        assert "refrigerator" in ITEM_CATALOG
-        assert ITEM_CATALOG["refrigerator"] == (200, 280)
+        assert "fridge_single_door" in ITEM_CATALOG
+        assert ITEM_CATALOG["fridge_single_door"] == (200, 280)
         assert "box_standard" in ITEM_CATALOG
         assert ITEM_CATALOG["box_standard"] == (15, 20)
 
@@ -3066,7 +3066,7 @@ class TestFullFlowWithVolume:
         # CARGO → PICKUP_COUNT (Phase 11: volume skipped, set manually)
         state, reply, done = self.handler.handle_text(state, "Квартира 3 комнаты, вся мебель")
         assert state.step == "pickup_count"
-        # Simulate in-flight volume selection (xl, surcharge=600)
+        # Simulate in-flight volume selection (xl, surcharge=500)
         state.data.custom["volume_category"] = "xl"
 
         # PICKUP_COUNT → ADDR_FROM (single pickup)
@@ -3105,13 +3105,13 @@ class TestFullFlowWithVolume:
         state, reply, done = self.handler.handle_text(state, "4")
         assert state.step == "estimate"
         assert "₪" in reply
-        # base=150 + xl volume=600 + route_fee=500 (Хайфа→Тель-Авив, inter_region_short) = 1250
+        # base=150 + xl volume=500 + route_fee=500 (Хайфа→Тель-Авив, inter_region_short) = 1150
         # G6 complexity: score=2 (volume_xl + route_inter_region_short) >= threshold 2
-        # mid = 1250 * 1.18 * 1.08 = 1593.0
-        # 1593*0.85=1354.05→1354, 1593*1.15=1831.95→1832
-        assert state.data.custom["estimate_min"] == 1354
-        assert state.data.custom["estimate_max"] == 1832
-        assert state.data.custom["estimate_breakdown"]["volume_surcharge"] == 600
+        # mid = 1150 * 1.18 * 1.08 = 1465.56
+        # 1465.56*0.85=1245.726→1245, 1465.56*1.15=1685.394→1686
+        assert state.data.custom["estimate_min"] == 1245
+        assert state.data.custom["estimate_max"] == 1686
+        assert state.data.custom["estimate_breakdown"]["volume_surcharge"] == 500
 
         # ESTIMATE → DONE
         state, reply, done = self.handler.handle_text(state, "1")
@@ -3133,8 +3133,8 @@ class TestItemAliasLoading:
 
     def test_alias_reversed_correctly(self):
         """Each alias maps to a valid catalog key."""
-        assert ITEM_ALIAS_LOOKUP["fridge"] == "refrigerator"
-        assert ITEM_ALIAS_LOOKUP["sofa"] == "sofa_3seat"
+        assert ITEM_ALIAS_LOOKUP["fridge"] == "fridge_single_door"
+        assert ITEM_ALIAS_LOOKUP["sofa"] == "sofa_large_3_seat"
         assert ITEM_ALIAS_LOOKUP["box"] == "box_standard"
         assert ITEM_ALIAS_LOOKUP["desk"] == "desk"
 
@@ -3173,7 +3173,7 @@ class TestItemAliasLoading:
         with pytest.raises(ValueError, match="Duplicate"):
             _build_alias_lookup(
                 {
-                    "refrigerator": ["fridge"],
+                    "fridge_single_door": ["fridge"],
                     "dryer": ["fridge"],  # duplicate!
                 },
                 ITEM_CATALOG,
@@ -3186,28 +3186,28 @@ class TestExtractItems:
     def test_russian_single_item(self):
         result = extract_items("холодильник")
         assert len(result) == 1
-        assert result[0]["key"] == "refrigerator"
+        assert result[0]["key"] == "fridge_single_door"
         assert result[0]["qty"] == 1
 
     def test_russian_multiple_items(self):
         result = extract_items("холодильник, стол, шкаф")
         keys = {item["key"] for item in result}
-        assert "refrigerator" in keys
+        assert "fridge_single_door" in keys
         assert "dining_table" in keys
-        assert "wardrobe_large" in keys  # generic "шкаф" → wardrobe_large
+        assert "wardrobe_3_doors" in keys  # generic "шкаф" → wardrobe_large
 
     def test_english_items(self):
         result = extract_items("sofa, fridge, desk")
         keys = {item["key"] for item in result}
-        assert "sofa_3seat" in keys
-        assert "refrigerator" in keys
+        assert "sofa_large_3_seat" in keys
+        assert "fridge_single_door" in keys
         assert "desk" in keys
 
     def test_hebrew_items(self):
         result = extract_items("מקרר, ספה, כיסא")
         keys = {item["key"] for item in result}
-        assert "refrigerator" in keys
-        assert "sofa_3seat" in keys
+        assert "fridge_single_door" in keys
+        assert "sofa_large_3_seat" in keys
         assert "chair" in keys
 
     def test_quantity_before_item_russian(self):
@@ -3219,7 +3219,7 @@ class TestExtractItems:
     def test_quantity_with_comma_separated(self):
         result = extract_items("диван, 10 коробок, 2 стула")
         items = {item["key"]: item["qty"] for item in result}
-        assert items["sofa_3seat"] == 1
+        assert items["sofa_large_3_seat"] == 1
         assert items["box_standard"] == 10
         assert items["chair"] == 2
 
@@ -3254,14 +3254,14 @@ class TestExtractItems:
     def test_unknown_words_skipped(self):
         result = extract_items("something random and a fridge")
         assert len(result) == 1
-        assert result[0]["key"] == "refrigerator"
+        assert result[0]["key"] == "fridge_single_door"
 
     def test_russian_and_separator(self):
         """Russian 'и' separator works."""
         result = extract_items("диван и холодильник")
         keys = {item["key"] for item in result}
-        assert "sofa_3seat" in keys
-        assert "refrigerator" in keys
+        assert "sofa_large_3_seat" in keys
+        assert "fridge_single_door" in keys
 
     def test_dedup_sums_quantities(self):
         """Same item mentioned twice -> quantities summed."""
@@ -3274,16 +3274,16 @@ class TestExtractItems:
         """Items from different languages in one input."""
         result = extract_items("fridge, диван, כיסא")
         keys = {item["key"] for item in result}
-        assert "refrigerator" in keys
-        assert "sofa_3seat" in keys
+        assert "fridge_single_door" in keys
+        assert "sofa_large_3_seat" in keys
         assert "chair" in keys
 
     def test_custom_alias_lookup(self):
         """Can pass custom alias lookup for testing."""
-        custom_lookup = {"my_item": "refrigerator"}
+        custom_lookup = {"my_item": "fridge_single_door"}
         result = extract_items("my_item", alias_lookup=custom_lookup)
         assert len(result) == 1
-        assert result[0]["key"] == "refrigerator"
+        assert result[0]["key"] == "fridge_single_door"
 
 
 class TestUnitWordExtraction:
@@ -3322,7 +3322,7 @@ class TestUnitWordExtraction:
         result = extract_items("10 шт коробок, диван")
         items = {item["key"]: item["qty"] for item in result}
         assert items["box_standard"] == 10
-        assert items["sofa_3seat"] == 1
+        assert items["sofa_large_3_seat"] == 1
 
 
 class TestNewItemCatalogEntries:
@@ -3356,7 +3356,7 @@ class TestNewItemCatalogEntries:
     def test_sofa_3seat_still_works(self):
         """'диван' → sofa_3seat (regular sofa unchanged)."""
         result = extract_items("диван")
-        assert result[0]["key"] == "sofa_3seat"
+        assert result[0]["key"] == "sofa_large_3_seat"
 
     def test_shelving_unit(self):
         """'стеллаж' → shelving_unit."""
@@ -3371,12 +3371,12 @@ class TestNewItemCatalogEntries:
     def test_exercise_machine(self):
         """'тренажер' → exercise_machine."""
         result = extract_items("тренажер")
-        assert result[0]["key"] == "exercise_machine"
+        assert result[0]["key"] == "home_gym"
 
     def test_exercise_machine_yo(self):
         """'тренажёр' (with ё) → exercise_machine."""
         result = extract_items("тренажёр")
-        assert result[0]["key"] == "exercise_machine"
+        assert result[0]["key"] == "home_gym"
 
     def test_garden_furniture(self):
         """'садовая мебель' → garden_furniture."""
@@ -3386,36 +3386,36 @@ class TestNewItemCatalogEntries:
     def test_fridge_small(self):
         """'маленький холодильник' → refrigerator_small."""
         result = extract_items("маленький холодильник")
-        assert result[0]["key"] == "refrigerator_small"
+        assert result[0]["key"] == "fridge_single_door"
 
     def test_fridge_large(self):
         """'большой холодильник' → refrigerator_large."""
         result = extract_items("большой холодильник")
-        assert result[0]["key"] == "refrigerator_large"
+        assert result[0]["key"] == "fridge_double_door"
 
     def test_fridge_double_door(self):
         """'двухдверный холодильник' → refrigerator_large."""
         result = extract_items("двухдверный холодильник")
-        assert result[0]["key"] == "refrigerator_large"
+        assert result[0]["key"] == "fridge_double_door"
 
     def test_fridge_plain_unchanged(self):
         """'холодильник' → refrigerator (mid-tier still default)."""
         result = extract_items("холодильник")
-        assert result[0]["key"] == "refrigerator"
+        assert result[0]["key"] == "fridge_single_door"
 
     def test_mixed_new_items(self):
         """Multiple new items in one string."""
         result = extract_items("газовая плита, тренажер, 2 стеллажа, садовая мебель")
         keys = {r["key"] for r in result}
         assert "gas_stove" in keys
-        assert "exercise_machine" in keys
+        assert "home_gym" in keys
         assert "garden_furniture" in keys
 
     def test_new_items_labels(self):
         """Item labels loaded for all new items."""
         for key in ["gas_stove", "sofa_4seat", "sofa_5seat", "shelving_unit",
-                     "exercise_machine", "garden_furniture",
-                     "refrigerator_small", "refrigerator_large"]:
+                     "home_gym", "garden_furniture",
+                     "fridge_single_door", "fridge_double_door"]:
             assert key in ITEM_LABELS, f"{key} missing from ITEM_LABELS"
             assert "ru" in ITEM_LABELS[key], f"{key} missing 'ru' label"
 
@@ -3427,78 +3427,78 @@ class TestWardrobeSizing:
         """Generic 'шкаф' → wardrobe_large (default big)."""
         result = extract_items("шкаф")
         assert len(result) == 1
-        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["key"] == "wardrobe_3_doors"
 
     def test_shifonier_is_large(self):
         """'шифонер' → wardrobe_large."""
         result = extract_items("шифонер")
         assert len(result) == 1
-        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["key"] == "wardrobe_3_doors"
 
     def test_shifonyer_is_large(self):
         """'шифоньер' → wardrobe_large."""
         result = extract_items("шифоньер")
         assert len(result) == 1
-        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["key"] == "wardrobe_3_doors"
 
     def test_shkaf_3_doors_is_large(self):
         """'шкаф 3 двери' → wardrobe_large, qty=1 (not 3)."""
         result = extract_items("шкаф 3 двери")
         assert len(result) == 1
-        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["key"] == "wardrobe_3_doors"
         assert result[0]["qty"] == 1
 
-    def test_shkaf_4_doors_is_large(self):
-        """'шкаф 4 двери' → wardrobe_large, qty=1."""
+    def test_shkaf_4_doors_is_4_doors(self):
+        """'шкаф 4 двери' → wardrobe_4_doors, qty=1."""
         result = extract_items("шкаф 4 двери")
         assert len(result) == 1
-        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["key"] == "wardrobe_4_doors"
         assert result[0]["qty"] == 1
 
     def test_shifonier_3_doors_is_large(self):
         """'шифонер 3 двери' → wardrobe_large, qty=1 (not 3)."""
         result = extract_items("шифонер 3 двери")
         assert len(result) == 1
-        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["key"] == "wardrobe_3_doors"
         assert result[0]["qty"] == 1
 
     def test_shkaf_soldatik_is_small(self):
         """'шкаф-солдатик' → wardrobe_small."""
         result = extract_items("шкаф-солдатик")
         assert len(result) == 1
-        assert result[0]["key"] == "wardrobe_small"
+        assert result[0]["key"] == "wardrobe_2_doors"
 
     def test_shkaf_1_door_is_small(self):
         """'шкаф 1 дверь' → wardrobe_small, qty=1."""
         result = extract_items("шкаф 1 дверь")
         assert len(result) == 1
-        assert result[0]["key"] == "wardrobe_small"
+        assert result[0]["key"] == "wardrobe_2_doors"
         assert result[0]["qty"] == 1
 
     def test_shkaf_2_doors_is_small(self):
         """'шкаф 2 двери' → wardrobe_small, qty=1."""
         result = extract_items("шкаф 2 двери")
         assert len(result) == 1
-        assert result[0]["key"] == "wardrobe_small"
+        assert result[0]["key"] == "wardrobe_2_doors"
         assert result[0]["qty"] == 1
 
     def test_wardrobe_small_price_range(self):
         """wardrobe_small should have correct price range."""
-        result = estimate_price(items=["wardrobe_small"])
+        result = estimate_price(items=["wardrobe_2_doors"])
         # wardrobe_small [150, 200], mid=175
         assert result["breakdown"]["items_mid"] == 175.0
 
     def test_wardrobe_large_price_range(self):
         """wardrobe_large should have correct price range."""
-        result = estimate_price(items=["wardrobe_large"])
+        result = estimate_price(items=["wardrobe_3_doors"])
         # wardrobe_large [250, 400], mid=325
         assert result["breakdown"]["items_mid"] == 325.0
 
-    def test_shkaf_kupe_is_large(self):
-        """'шкаф-купе' → wardrobe_large."""
+    def test_shkaf_kupe_is_4_doors(self):
+        """'шкаф-купе' → wardrobe_4_doors."""
         result = extract_items("шкаф-купе")
         assert len(result) == 1
-        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["key"] == "wardrobe_4_doors"
 
 
 class TestExtractItemsAttributeSafe:
@@ -3510,35 +3510,35 @@ class TestExtractItemsAttributeSafe:
         """'5 дверный шкаф' — 5 is doors, not qty."""
         result = extract_items("5 дверный шкаф")
         assert len(result) == 1
-        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["key"] == "wardrobe_3_doors"
         assert result[0]["qty"] == 1
 
     def test_5_hyphen_door_wardrobe_qty_1(self):
         """'5-дверный шкаф' — hyphenated attribute."""
         result = extract_items("5-дверный шкаф")
         assert len(result) == 1
-        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["key"] == "wardrobe_3_doors"
         assert result[0]["qty"] == 1
 
     def test_fridge_200kg_615l_qty_1(self):
         """'холодильник 200кг 615л' — weight+volume attributes, qty=1."""
         result = extract_items("холодильник 200кг 615л")
         assert len(result) == 1
-        assert result[0]["key"] == "refrigerator"
+        assert result[0]["key"] == "fridge_single_door"
         assert result[0]["qty"] == 1
 
     def test_fridge_200kg_qty_1(self):
         """'холодильник 200кг' — weight attribute only."""
         result = extract_items("холодильник 200кг")
         assert len(result) == 1
-        assert result[0]["key"] == "refrigerator"
+        assert result[0]["key"] == "fridge_single_door"
         assert result[0]["qty"] == 1
 
     def test_wardrobe_180cm_qty_1(self):
         """'шкаф 180см' — dimension attribute."""
         result = extract_items("шкаф 180см")
         assert len(result) == 1
-        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["key"] == "wardrobe_3_doors"
         assert result[0]["qty"] == 1
 
     def test_table_120cm_qty_1(self):
@@ -3552,7 +3552,7 @@ class TestExtractItemsAttributeSafe:
         """'шкаф 2м' — meter dimension."""
         result = extract_items("шкаф 2м")
         assert len(result) == 1
-        assert result[0]["key"] == "wardrobe_large"
+        assert result[0]["key"] == "wardrobe_3_doors"
         assert result[0]["qty"] == 1
 
     # --- Explicit markers: must still work ---
@@ -3663,22 +3663,24 @@ class TestExtractItemsAttributeSafe:
         """'Холодильник, 5 дверный шкаф' — fridge qty=1, wardrobe qty=1."""
         result = extract_items("Холодильник, 5 дверный шкаф")
         keys = {r["key"]: r["qty"] for r in result}
-        assert keys["refrigerator"] == 1
-        assert keys["wardrobe_large"] == 1
+        assert keys["fridge_single_door"] == 1
+        # Generic "шкаф" with "5 дверный" attribute → wardrobe_3_doors (default)
+        assert keys["wardrobe_3_doors"] == 1
 
     def test_fridge_and_wardrobe_x2(self):
         """'Холодильник, шкаф x2' — fridge qty=1, wardrobe qty=2."""
         result = extract_items("Холодильник, шкаф x2")
         keys = {r["key"]: r["qty"] for r in result}
-        assert keys["refrigerator"] == 1
-        assert keys["wardrobe_large"] == 2
+        assert keys["fridge_single_door"] == 1
+        # Generic "шкаф" → wardrobe_3_doors (default)
+        assert keys["wardrobe_3_doors"] == 2
 
 
 class TestEstimatePriceWithQty:
     """Tests for estimate_price() with dict-based items (qty support)."""
 
     def test_single_item_qty_1(self):
-        result = estimate_price(items=[{"key": "refrigerator", "qty": 1}])
+        result = estimate_price(items=[{"key": "fridge_single_door", "qty": 1}])
         # base=150 + items_mid=(200+280)/2=240 -> mid=390
         # 390*0.85=331.5→331, 390*1.15=448.5→449
         assert result["estimate_min"] == 331
@@ -3693,7 +3695,7 @@ class TestEstimatePriceWithQty:
 
     def test_multiple_items_with_qty(self):
         result = estimate_price(items=[
-            {"key": "refrigerator", "qty": 1},
+            {"key": "fridge_single_door", "qty": 1},
             {"key": "box_standard", "qty": 5},
         ])
         # items_mid = 240 + 87.5 = 327.5
@@ -3701,7 +3703,7 @@ class TestEstimatePriceWithQty:
 
     def test_backward_compat_list_str(self):
         """Old list[str] format still works."""
-        result = estimate_price(items=["refrigerator", "desk"])
+        result = estimate_price(items=["fridge_single_door", "desk"])
         # items_mid = 240 + 125 = 365
         assert result["breakdown"]["items_mid"] == 365.0
 
@@ -3712,7 +3714,7 @@ class TestEstimatePriceWithQty:
     def test_items_with_volume_and_floors(self):
         """Items combine correctly with volume surcharge and floors."""
         result = estimate_price(
-            items=[{"key": "sofa_3seat", "qty": 1}],
+            items=[{"key": "sofa_large_3_seat", "qty": 1}],
             volume_category="large",
             pickup_floors=[(3, False)],
             floor_to=1,
@@ -3739,7 +3741,7 @@ class TestComplexityGuards:
         assert "complex_min_floor" in COMPLEXITY_GUARDS
         assert "score_threshold" in COMPLEXITY_GUARDS
         assert COMPLEXITY_GUARDS["complex_multiplier"] == 1.18
-        assert COMPLEXITY_GUARDS["complex_min_floor"] == 7800
+        assert COMPLEXITY_GUARDS["complex_min_floor"] == 7500
 
     # -- Exemptions: small / None / medium never trigger complexity ----------
 
@@ -3783,9 +3785,9 @@ class TestComplexityGuards:
         result = estimate_price(volume_category="xl")
         assert result["breakdown"]["complexity_score"] == 1
         assert result["breakdown"]["complexity_applied"] is False
-        # Same as before G6: base=150+xl=600=750, *0.85=637, xl_floor=800
-        assert result["estimate_min"] == 800
-        assert result["estimate_max"] == 863
+        # base=150+xl=500=650, *0.85=552, *1.15=748, xl_floor=700
+        assert result["estimate_min"] == 700
+        assert result["estimate_max"] == 748
 
     def test_large_volume_only_score_1(self):
         """Large volume alone → score=1 < threshold, no complexity."""
@@ -3804,17 +3806,17 @@ class TestComplexityGuards:
             volume_category="xl",
             route_band="inter_region_short",
         )
-        # base=150 + xl=600 + route=500 = 1250
+        # base=150 + xl=500 + route=500 = 1150
         # G6: score=2 (volume_xl, route_inter_region_short), multiplier
-        # mid = 1250 * 1.18 * 1.08 = 1593.0
-        # 1593*0.85=1354.05→1354, 1593*1.15=1831.95→1832
-        # score=2 < min_floor_threshold=3 → no 7800 floor
+        # mid = 1150 * 1.18 * 1.08 = 1465.56
+        # 1465.56*0.85=1245.726→1245, 1465.56*1.15=1685.394→1686
+        # score=2 < min_floor_threshold=3 → no 7500 floor
         assert result["breakdown"]["complexity_applied"] is True
         assert result["breakdown"]["complexity_score"] == 2
         assert "volume_xl" in result["breakdown"]["complexity_triggers"]
         assert "route_inter_region_short" in result["breakdown"]["complexity_triggers"]
-        assert result["estimate_min"] == 1354
-        assert result["estimate_max"] == 1832
+        assert result["estimate_min"] == 1245
+        assert result["estimate_max"] == 1686
         assert "complexity_guard" in result["breakdown"]["guards_applied"]
         assert "complex_min_floor" not in result["breakdown"]["guards_applied"]
 
@@ -3836,21 +3838,20 @@ class TestComplexityGuards:
     # -- Score at 3: multiplier + hard floor ---------------------------------
 
     def test_score_3_triggers_min_floor(self):
-        """XL + assembly + route → score=3 → min_floor=7800 applied."""
+        """XL + assembly + route → score=3 → min_floor=7500 applied."""
         result = estimate_price(
             volume_category="xl",
             extras=["assembly"],
             route_band="inter_region_short",
         )
-        # base=150 + xl=600 + assembly→disassembly=80 + route=500 = 1330
+        # base=150 + xl=500 + assembly→disassembly=80 + route=500 = 1230
         # G6: score=3 (volume_xl, assembly, route_inter_region_short)
-        # mid = 1330 * 1.18 * 1.08 = 1694.664
-        # 1694.664*0.85=1440.46→1440, 1694.664*1.15=1948.86→1949
-        # score=3 >= min_floor_threshold=3 → complex_min_floor=7800 applies
+        # mid = 1230 * 1.18 * 1.08 = 1567.08
+        # But score=3 >= min_floor_threshold=3 → complex_min_floor=7500 applies
         assert result["breakdown"]["complexity_applied"] is True
         assert result["breakdown"]["complexity_score"] == 3
-        assert result["estimate_min"] == 7800
-        assert result["estimate_max"] == 7800
+        assert result["estimate_min"] == 7500
+        assert result["estimate_max"] == 7500
         assert "complex_min_floor" in result["breakdown"]["guards_applied"]
         assert "complexity_guard" in result["breakdown"]["guards_applied"]
 
@@ -3862,12 +3863,12 @@ class TestComplexityGuards:
             route_band="inter_region_short",
             extra_pickups=1,
         )
-        # base=150 + xl=600 + assembly=80 + route=500 + pickup=70 = 1400
+        # base=150 + xl=500 + assembly=80 + route=500 + pickup=70 = 1300
         # G6: score=4 (volume_xl, assembly, multi_pickup, route)
-        # min_floor_score=3 met → complex_min_floor=7800
+        # min_floor_score=3 met → complex_min_floor=7500
         assert result["breakdown"]["complexity_score"] == 4
         assert result["breakdown"]["complexity_applied"] is True
-        assert result["estimate_min"] == 7800
+        assert result["estimate_min"] == 7500
         assert "complex_min_floor" in result["breakdown"]["guards_applied"]
 
     def test_score_5_all_triggers(self):
@@ -3880,9 +3881,9 @@ class TestComplexityGuards:
             pickup_floors=[(6, False)],
             floor_to=2, has_elevator_to=True,
             items=[
-                {"key": "wardrobe_large", "qty": 4},
-                {"key": "sofa_3seat", "qty": 2},
-                {"key": "refrigerator", "qty": 1},
+                {"key": "wardrobe_3_doors", "qty": 4},
+                {"key": "sofa_large_3_seat", "qty": 2},
+                {"key": "fridge_single_door", "qty": 1},
                 {"key": "bed_double", "qty": 1},
                 {"key": "washing_machine", "qty": 1},
                 {"key": "box_standard", "qty": 10},
@@ -3892,8 +3893,8 @@ class TestComplexityGuards:
         assert result["breakdown"]["complexity_score"] == 5
         assert result["breakdown"]["complexity_applied"] is True
         assert len(result["breakdown"]["complexity_triggers"]) == 5
-        # With so many items + multiplier, estimate_min should be >= 7800
-        assert result["estimate_min"] >= 7800
+        # With so many items + multiplier, estimate_min should be >= 7500
+        assert result["estimate_min"] >= 7500
         assert result["estimate_max"] >= result["estimate_min"]
         assert "complexity_guard" in result["breakdown"]["guards_applied"]
 
@@ -3929,20 +3930,20 @@ class TestComplexityGuards:
         result = estimate_price(
             volume_category="xl",
             extras=["assembly"],
-            items=[{"key": "wardrobe_large", "qty": 2}],
+            items=[{"key": "wardrobe_3_doors", "qty": 2}],
         )
-        # base=150 + xl=600 + assembly=80 = 830
+        # base=150 + xl=500 + assembly=80 = 730
         # items_mid = (250+400)/2 * 2 = 650
-        # fixed=830, mid=830+650=1480
+        # fixed=730, mid=730+650=1380
         # G6: score=2 (volume_xl, assembly)
-        # mid = 1480 * 1.18 * 1.08 = 1886.112
-        # floor(1886.112*0.85)=floor(1603.1952)=1603
-        # ceil(1886.112*1.15)=ceil(2169.0288)=2170
+        # mid = 1380 * 1.18 * 1.08 = 1758.672
+        # floor(1758.672*0.85)=floor(1494.8712)=1494
+        # ceil(1758.672*1.15)=ceil(2022.4728)=2023
         assert result["breakdown"]["complexity_applied"] is True
         assert result["breakdown"]["complexity_score"] == 2
         assert result["breakdown"]["items_mid"] == 650.0
-        assert result["estimate_min"] == 1603
-        assert result["estimate_max"] == 2170
+        assert result["estimate_min"] == 1494
+        assert result["estimate_max"] == 2023
 
     # -- Route band edge cases -----------------------------------------------
 
@@ -3991,35 +3992,33 @@ class TestDetectVolumeFromItems:
         assert "large_heavy_count" in VOLUME_FROM_ITEMS_CONFIG
 
     def test_xl_by_items_mid(self):
-        """items_mid >= 1500 → 'xl'."""
-        # 4 sofa_3seat (mid=225 each) + 4 wardrobe_large (mid=200 each)
-        # items_mid = 4*225 + 4*200 = 900 + 800 = 1700 >= 1500
+        """items_mid >= 1400 → 'xl'."""
+        # 4 sofa_large_3_seat (mid=225 each) + 4 wardrobe_3_doors (mid=325 each)
+        # items_mid = 4*225 + 4*325 = 900 + 1300 = 2200 >= 1400
         items = [
-            {"key": "sofa_3seat", "qty": 4},
-            {"key": "wardrobe_large", "qty": 4},
+            {"key": "sofa_large_3_seat", "qty": 4},
+            {"key": "wardrobe_3_doors", "qty": 4},
         ]
         assert detect_volume_from_items(items) == "xl"
 
     def test_xl_by_heavy_count(self):
         """4 heavy items → 'xl'."""
         items = [
-            {"key": "sofa_3seat", "qty": 1},
-            {"key": "refrigerator", "qty": 1},
+            {"key": "sofa_large_3_seat", "qty": 1},
+            {"key": "fridge_single_door", "qty": 1},
             {"key": "washing_machine", "qty": 1},
             {"key": "bed_double", "qty": 1},
         ]
         assert detect_volume_from_items(items) == "xl"
 
     def test_large_by_items_mid(self):
-        """items_mid >= 700 → 'large'."""
-        # sofa_3seat mid=225, refrigerator mid=240, box_standard x10 mid=175
-        # total = 225 + 240 + 175 = 640 < 700... need more
-        # sofa_3seat mid=225, wardrobe_large mid=200, refrigerator mid=240,
-        # box x5 mid=87.5 → total = 752.5 >= 700
+        """items_mid >= 600 → 'large'."""
+        # sofa_large_3_seat mid=225, wardrobe_3_doors mid=325, fridge_single_door mid=240,
+        # box x5 mid=87.5 → total = 877.5 >= 600
         items = [
-            {"key": "sofa_3seat", "qty": 1},
-            {"key": "wardrobe_large", "qty": 1},
-            {"key": "refrigerator", "qty": 1},
+            {"key": "sofa_large_3_seat", "qty": 1},
+            {"key": "wardrobe_3_doors", "qty": 1},
+            {"key": "fridge_single_door", "qty": 1},
             {"key": "box_standard", "qty": 5},
         ]
         # Also has 3 heavy items → xl by heavy count (3 >= 2? yes, but
@@ -4029,8 +4028,8 @@ class TestDetectVolumeFromItems:
     def test_large_by_heavy_count(self):
         """2 heavy items → 'large'."""
         items = [
-            {"key": "sofa_3seat", "qty": 1},
-            {"key": "refrigerator", "qty": 1},
+            {"key": "sofa_large_3_seat", "qty": 1},
+            {"key": "fridge_single_door", "qty": 1},
         ]
         assert detect_volume_from_items(items) == "large"
 
@@ -4052,8 +4051,8 @@ class TestDetectVolumeFromItems:
 
     def test_item_labels_loaded(self):
         """item_labels config section is loaded for crew localization."""
-        assert "sofa_3seat" in ITEM_LABELS
-        assert ITEM_LABELS["sofa_3seat"]["ru"] == "Диван"
+        assert "sofa_large_3_seat" in ITEM_LABELS
+        assert ITEM_LABELS["sofa_large_3_seat"]["ru"] == "Диван"
         assert ITEM_LABELS["box_standard"]["en"] == "Box"
 
 
@@ -4072,7 +4071,7 @@ class TestCargoItemExtraction:
         items = state.data.custom["cargo_items"]
         assert len(items) >= 1
         keys = {item["key"] for item in items}
-        assert "sofa_3seat" in keys
+        assert "sofa_large_3_seat" in keys
 
     def test_items_flow_into_estimate(self):
         """Extracted items affect the pricing estimate."""
@@ -4327,7 +4326,7 @@ class TestCargoRoomVolumeDetection:
         state.step = "extras"
         state, reply, done = self.handler.handle_text(state, "4")
         assert state.step == "estimate"
-        assert state.data.custom["estimate_breakdown"]["volume_surcharge"] == 600
+        assert state.data.custom["estimate_breakdown"]["volume_surcharge"] == 500
 
 
 # ============================================================================
@@ -4979,33 +4978,33 @@ class TestSofaSpaceVariantAliases:
         items = extract_items("5 местный диван")
         found = {i["key"]: i["qty"] for i in items}
         assert found.get("sofa_5seat") == 1
-        assert "sofa_3seat" not in found
+        assert "sofa_large_3_seat" not in found
 
     def test_4_mestny_space(self):
         """'4 местный диван' → sofa_4seat x1."""
         items = extract_items("4 местный диван")
         found = {i["key"]: i["qty"] for i in items}
         assert found.get("sofa_4seat") == 1
-        assert "sofa_3seat" not in found
+        assert "sofa_large_3_seat" not in found
 
     def test_3_mestny_space(self):
         """'3 местный диван' → sofa_3seat x1."""
         items = extract_items("3 местный диван")
         found = {i["key"]: i["qty"] for i in items}
-        assert found.get("sofa_3seat") == 1
+        assert found.get("sofa_large_3_seat") == 1
 
     def test_2_mestny_space(self):
         """'2 местный диван' → sofa_2seat x1."""
         items = extract_items("2 местный диван")
         found = {i["key"]: i["qty"] for i in items}
-        assert found.get("sofa_2seat") == 1
-        assert "sofa_3seat" not in found
+        assert found.get("sofa_small_2_seat") == 1
+        assert "sofa_large_3_seat" not in found
 
     def test_plain_divan_no_regression(self):
         """Plain 'диван' still maps to sofa_3seat x1 (no regression)."""
         items = extract_items("диван")
         found = {i["key"]: i["qty"] for i in items}
-        assert found.get("sofa_3seat") == 1
+        assert found.get("sofa_large_3_seat") == 1
 
     def test_attr_suffix_mestny(self):
         """_ATTR_SUFFIXES matches '5 местный' so bare 5 is not qty."""
@@ -5148,7 +5147,7 @@ class TestCombinedItemExtractionFixes:
         assert found.get("mattress") == 2, f"Expected mattress=2, got {found}"
         assert found.get("bed_double") == 1, f"Expected bed_double=1, got {found}"
         # Must NOT have sofa_3seat or duplicate beds
-        assert "sofa_3seat" not in found
+        assert "sofa_large_3_seat" not in found
 
     def test_original_bug_report(self):
         """The original report: '5 местный диван, детская кровать, кровать, матрас'.
@@ -5295,3 +5294,950 @@ class TestCrewViewEstimateSuppression:
         msg = format_crew_message("test-lead-id", payload)
         assert "₪1500–₪2000" in msg
         assert "#43" in msg
+
+
+# ===================================================================
+# New catalog items: vanity_table, shoe_cabinet
+# ===================================================================
+
+
+class TestVanityTableItem:
+    """Verify vanity_table is in catalog and recognised."""
+
+    def test_buduar(self):
+        """'будуар' → vanity_table x1."""
+        items = extract_items("будуар")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("vanity_table") == 1
+
+    def test_buduar_so_stulom(self):
+        """'будуар со стулом' → vanity_table x1."""
+        items = extract_items("будуар со стулом")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("vanity_table") == 1
+
+    def test_zhenskiy_stol(self):
+        """'женский стол с зеркалом' → vanity_table x1."""
+        items = extract_items("женский стол с зеркалом")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("vanity_table") == 1
+
+    def test_tualetny_stolik(self):
+        """'туалетный столик' → vanity_table x1."""
+        items = extract_items("туалетный столик")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("vanity_table") == 1
+
+    def test_tryumo(self):
+        """'трюмо' → vanity_table x1."""
+        items = extract_items("трюмо")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("vanity_table") == 1
+
+    def test_vanity_table_in_catalog(self):
+        """Vanity table price range is (100, 180)."""
+        assert "vanity_table" in ITEM_CATALOG
+        lo, hi = ITEM_CATALOG["vanity_table"]
+        assert lo == 100
+        assert hi == 180
+
+    def test_vanity_table_not_heavy(self):
+        """Vanity table is NOT a heavy item."""
+        heavy_keys = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "vanity_table" not in heavy_keys
+
+    def test_vanity_table_label(self):
+        """Vanity table has labels in all 3 languages."""
+        assert "vanity_table" in ITEM_LABELS
+        assert ITEM_LABELS["vanity_table"]["ru"] == "Будуар"
+        assert ITEM_LABELS["vanity_table"]["en"] == "Vanity table"
+        assert ITEM_LABELS["vanity_table"]["he"] == "שולחן איפור"
+
+    def test_vanity_table_english(self):
+        """'vanity table' → vanity_table x1."""
+        items = extract_items("vanity table")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("vanity_table") == 1
+
+    def test_vanity_table_hebrew(self):
+        """'שולחן איפור' → vanity_table x1."""
+        items = extract_items("שולחן איפור")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("vanity_table") == 1
+
+
+class TestShoeCabinetItem:
+    """Verify shoe_cabinet is in catalog and recognised."""
+
+    def test_obuvnitsa(self):
+        """'обувница' → shoe_cabinet x1."""
+        items = extract_items("обувница")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("shoe_cabinet") == 1
+
+    def test_shkaf_dlya_obuvi(self):
+        """'шкаф для обуви' → shoe_cabinet x1 (not wardrobe)."""
+        items = extract_items("шкаф для обуви")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("shoe_cabinet") == 1
+        assert "wardrobe_2_doors" not in found
+        assert "wardrobe_3_doors" not in found
+
+    def test_komod_dlya_obuvi(self):
+        """'комод для обуви' → shoe_cabinet x1."""
+        items = extract_items("комод для обуви")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("shoe_cabinet") == 1
+
+    def test_polka_dlya_obuvi(self):
+        """'полка для обуви' → shoe_cabinet x1 (not shelving_unit)."""
+        items = extract_items("полка для обуви")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("shoe_cabinet") == 1
+        assert "shelving_unit" not in found
+
+    def test_tumba_dlya_obuvi(self):
+        """'тумба для обуви' → shoe_cabinet x1."""
+        items = extract_items("тумба для обуви")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("shoe_cabinet") == 1
+
+    def test_shoe_cabinet_in_catalog(self):
+        """Shoe cabinet price range is (60, 120)."""
+        assert "shoe_cabinet" in ITEM_CATALOG
+        lo, hi = ITEM_CATALOG["shoe_cabinet"]
+        assert lo == 60
+        assert hi == 120
+
+    def test_shoe_cabinet_not_heavy(self):
+        """Shoe cabinet is NOT a heavy item."""
+        heavy_keys = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "shoe_cabinet" not in heavy_keys
+
+    def test_shoe_cabinet_label(self):
+        """Shoe cabinet has labels in all 3 languages."""
+        assert "shoe_cabinet" in ITEM_LABELS
+        assert ITEM_LABELS["shoe_cabinet"]["ru"] == "Обувница"
+        assert ITEM_LABELS["shoe_cabinet"]["en"] == "Shoe cabinet"
+        assert ITEM_LABELS["shoe_cabinet"]["he"] == "ארון נעליים"
+
+    def test_shoe_cabinet_english(self):
+        """'shoe cabinet' → shoe_cabinet x1."""
+        items = extract_items("shoe cabinet")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("shoe_cabinet") == 1
+
+    def test_shoe_cabinet_hebrew(self):
+        """'ארון נעליים' → shoe_cabinet x1."""
+        items = extract_items("ארון נעליים")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("shoe_cabinet") == 1
+
+    def test_plain_polka_still_shelving(self):
+        """'полка' alone still matches shelving_unit (no regression)."""
+        items = extract_items("полка")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("shelving_unit") == 1
+
+    def test_plain_shkaf_still_wardrobe(self):
+        """'шкаф' alone still matches wardrobe_3_doors (default)."""
+        items = extract_items("шкаф")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("wardrobe_3_doors") == 1
+
+
+# ===================================================================
+# Estimate display toggle (ESTIMATE_DISPLAY_ENABLED setting)
+# ===================================================================
+
+
+class TestEstimateDisplayToggle:
+    """Verify estimate_display_enabled=False hides price from user/crew
+    but operator data (estimate_min/max) is still stored."""
+
+    def setup_method(self):
+        self.handler = MovingBotHandler()
+
+    def test_user_sees_no_price_when_disabled(self):
+        """When estimate_display_enabled=False, user gets estimate_no_price text."""
+        state = self.handler.new_session("t1", "chat1")
+        state.data.custom["cargo_raw"] = "диван, холодильник"
+        state.data.custom["cargo_items"] = extract_items("диван, холодильник")
+        state.data.custom["volume_category"] = "large"
+        state.step = "extras"
+
+        with patch("app.core.handlers.moving_bot_handler._app_settings") as mock_s:
+            mock_s.estimate_display_enabled = False
+            state, reply, done = self.handler.handle_text(state, "4")
+
+        assert state.step == "estimate"
+        # Estimate data IS stored (for operator)
+        assert "estimate_min" in state.data.custom
+        assert "estimate_max" in state.data.custom
+        assert state.data.custom.get("estimate_display_disabled") is True
+        # But user sees no-price message
+        assert "₪" not in reply
+
+    def test_user_sees_price_when_enabled(self):
+        """When estimate_display_enabled=True (default), user sees price."""
+        state = self.handler.new_session("t1", "chat1")
+        state.data.custom["cargo_raw"] = "диван, холодильник"
+        state.data.custom["cargo_items"] = extract_items("диван, холодильник")
+        state.data.custom["volume_category"] = "large"
+        state.step = "extras"
+
+        with patch("app.core.handlers.moving_bot_handler._app_settings") as mock_s:
+            mock_s.estimate_display_enabled = True
+            state, reply, done = self.handler.handle_text(state, "4")
+
+        assert state.step == "estimate"
+        assert "estimate_min" in state.data.custom
+        assert state.data.custom.get("estimate_display_disabled") is not True
+        assert "₪" in reply
+
+    def test_crew_no_estimate_when_display_disabled(self):
+        """Crew message omits estimate when estimate_display_disabled flag is set."""
+        from app.core.dispatch.crew_view import format_crew_message
+
+        payload = {
+            "data": {
+                "floor_from": "3",
+                "floor_to": "2",
+                "time_window": "morning",
+                "extras": [],
+                "custom": {
+                    "lead_number": 50,
+                    "volume_category": "large",
+                    "route_classification": {
+                        "from_locality": "Tel Aviv",
+                        "to_locality": "Haifa",
+                    },
+                    "cargo_items": [],
+                    "estimate_min": 1500,
+                    "estimate_max": 2000,
+                    "estimate_display_disabled": True,
+                },
+            },
+        }
+        msg = format_crew_message("test-lead-id", payload)
+        # Should NOT contain estimate line despite data being present
+        assert "₪" not in msg
+        assert "#50" in msg
+
+    def test_crew_shows_estimate_normally(self):
+        """Default: crew sees estimate when display is not disabled."""
+        from app.core.dispatch.crew_view import format_crew_message
+
+        payload = {
+            "data": {
+                "floor_from": "3",
+                "floor_to": "2",
+                "time_window": "morning",
+                "extras": [],
+                "custom": {
+                    "lead_number": 51,
+                    "volume_category": "large",
+                    "route_classification": {
+                        "from_locality": "Tel Aviv",
+                        "to_locality": "Haifa",
+                    },
+                    "cargo_items": [],
+                    "estimate_min": 1500,
+                    "estimate_max": 2000,
+                },
+            },
+        }
+        msg = format_crew_message("test-lead-id", payload)
+        assert "₪1500–₪2000" in msg
+        assert "#51" in msg
+
+
+# ===================================================================
+# New catalog items: armchair, dresser, nightstand, carpet, mirror, oven
+# ===================================================================
+
+
+class TestArmchairItem:
+    """Verify armchair is in catalog and recognised."""
+
+    def test_kreslo(self):
+        items = extract_items("кресло")
+        assert {i["key"]: i["qty"] for i in items}.get("armchair") == 1
+
+    def test_kresla(self):
+        items = extract_items("кресла")
+        assert {i["key"]: i["qty"] for i in items}.get("armchair") == 1
+
+    def test_2_kresla(self):
+        items = extract_items("2 кресла")
+        assert {i["key"]: i["qty"] for i in items}.get("armchair") == 2
+
+    def test_armchair_catalog(self):
+        assert "armchair" in ITEM_CATALOG
+        assert ITEM_CATALOG["armchair"] == (120, 180)
+
+    def test_armchair_not_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "armchair" not in heavy
+
+    def test_armchair_label(self):
+        assert ITEM_LABELS["armchair"]["ru"] == "Кресло"
+        assert ITEM_LABELS["armchair"]["en"] == "Armchair"
+
+    def test_armchair_english(self):
+        items = extract_items("armchair")
+        assert {i["key"]: i["qty"] for i in items}.get("armchair") == 1
+
+
+class TestDresserItem:
+    """Verify dresser (комод) is in catalog and recognised."""
+
+    def test_komod(self):
+        items = extract_items("комод")
+        assert {i["key"]: i["qty"] for i in items}.get("dresser") == 1
+
+    def test_komod_not_shoe_cabinet(self):
+        """Plain 'комод' → dresser, NOT shoe_cabinet."""
+        items = extract_items("комод")
+        found = {i["key"]: i["qty"] for i in items}
+        assert "shoe_cabinet" not in found
+
+    def test_komod_dlya_obuvi_still_shoe(self):
+        """'комод для обуви' → shoe_cabinet (no regression)."""
+        items = extract_items("комод для обуви")
+        assert {i["key"]: i["qty"] for i in items}.get("shoe_cabinet") == 1
+
+    def test_dresser_catalog(self):
+        assert "dresser" in ITEM_CATALOG
+        assert ITEM_CATALOG["dresser"] == (150, 250)
+
+    def test_dresser_is_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "dresser" in heavy
+
+    def test_dresser_label(self):
+        assert ITEM_LABELS["dresser"]["ru"] == "Комод"
+
+    def test_dresser_english(self):
+        items = extract_items("dresser")
+        assert {i["key"]: i["qty"] for i in items}.get("dresser") == 1
+
+
+class TestNightstandItem:
+    """Verify nightstand (тумбочка) is in catalog and recognised."""
+
+    def test_tumbochka(self):
+        items = extract_items("тумбочка")
+        assert {i["key"]: i["qty"] for i in items}.get("nightstand") == 1
+
+    def test_tumbochki(self):
+        items = extract_items("тумбочки")
+        assert {i["key"]: i["qty"] for i in items}.get("nightstand") == 1
+
+    def test_2_tumbochki(self):
+        items = extract_items("2 тумбочки")
+        assert {i["key"]: i["qty"] for i in items}.get("nightstand") == 2
+
+    def test_tumba(self):
+        items = extract_items("тумба")
+        assert {i["key"]: i["qty"] for i in items}.get("nightstand") == 1
+
+    def test_tumba_dlya_obuvi_still_shoe(self):
+        """'тумба для обуви' → shoe_cabinet (no regression)."""
+        items = extract_items("тумба для обуви")
+        assert {i["key"]: i["qty"] for i in items}.get("shoe_cabinet") == 1
+
+    def test_nightstand_catalog(self):
+        assert "nightstand" in ITEM_CATALOG
+        assert ITEM_CATALOG["nightstand"] == (60, 80)
+
+    def test_nightstand_not_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "nightstand" not in heavy
+
+    def test_nightstand_label(self):
+        assert ITEM_LABELS["nightstand"]["ru"] == "Тумбочка"
+
+
+class TestCarpetItem:
+    """Verify carpet (ковёр) is in catalog and recognised."""
+
+    def test_kover_yo(self):
+        items = extract_items("ковёр")
+        assert {i["key"]: i["qty"] for i in items}.get("carpet") == 1
+
+    def test_kover_e(self):
+        items = extract_items("ковер")
+        assert {i["key"]: i["qty"] for i in items}.get("carpet") == 1
+
+    def test_kovry(self):
+        items = extract_items("ковры")
+        assert {i["key"]: i["qty"] for i in items}.get("carpet") == 1
+
+    def test_6_kovrov(self):
+        items = extract_items("6 ковров")
+        assert {i["key"]: i["qty"] for i in items}.get("carpet") == 6
+
+    def test_carpet_catalog(self):
+        assert "carpet" in ITEM_CATALOG
+        assert ITEM_CATALOG["carpet"] == (30, 50)
+
+    def test_carpet_not_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "carpet" not in heavy
+
+    def test_carpet_label(self):
+        assert ITEM_LABELS["carpet"]["ru"] == "Ковёр"
+
+    def test_carpet_english(self):
+        items = extract_items("carpet")
+        assert {i["key"]: i["qty"] for i in items}.get("carpet") == 1
+
+
+class TestMirrorItem:
+    """Verify mirror (зеркало) is in catalog and recognised."""
+
+    def test_zerkalo(self):
+        items = extract_items("зеркало")
+        assert {i["key"]: i["qty"] for i in items}.get("mirror") == 1
+
+    def test_zerkala(self):
+        items = extract_items("зеркала")
+        assert {i["key"]: i["qty"] for i in items}.get("mirror") == 1
+
+    def test_mirror_catalog(self):
+        assert "mirror" in ITEM_CATALOG
+        assert ITEM_CATALOG["mirror"] == (40, 80)
+
+    def test_mirror_not_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "mirror" not in heavy
+
+    def test_mirror_label(self):
+        assert ITEM_LABELS["mirror"]["ru"] == "Зеркало"
+
+    def test_mirror_english(self):
+        items = extract_items("mirror")
+        assert {i["key"]: i["qty"] for i in items}.get("mirror") == 1
+
+
+class TestOvenItem:
+    """Verify oven (духовка) is in catalog and recognised."""
+
+    def test_duhovka(self):
+        items = extract_items("духовка")
+        assert {i["key"]: i["qty"] for i in items}.get("oven") == 1
+
+    def test_duhovoy_shkaf(self):
+        items = extract_items("духовой шкаф")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("oven") == 1
+        assert "wardrobe_2_doors" not in found
+        assert "wardrobe_3_doors" not in found
+
+    def test_pech(self):
+        items = extract_items("печь")
+        assert {i["key"]: i["qty"] for i in items}.get("oven") == 1
+
+    def test_oven_catalog(self):
+        assert "oven" in ITEM_CATALOG
+        assert ITEM_CATALOG["oven"] == (150, 200)
+
+    def test_oven_is_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "oven" in heavy
+
+    def test_oven_label(self):
+        assert ITEM_LABELS["oven"]["ru"] == "Духовка"
+
+    def test_oven_english(self):
+        items = extract_items("oven")
+        assert {i["key"]: i["qty"] for i in items}.get("oven") == 1
+
+
+# ===================================================================
+# Fix: bed_double plural alias ("кровати" → bed_double)
+# ===================================================================
+
+
+class TestBedPluralFix:
+    """Verify 'кровати' and 'кроватей' map to bed_double."""
+
+    def test_krovati(self):
+        items = extract_items("кровати")
+        assert {i["key"]: i["qty"] for i in items}.get("bed_double") == 1
+
+    def test_2_krovati(self):
+        items = extract_items("2 кровати")
+        assert {i["key"]: i["qty"] for i in items}.get("bed_double") == 2
+
+    def test_krovatey(self):
+        items = extract_items("кроватей")
+        assert {i["key"]: i["qty"] for i in items}.get("bed_double") == 1
+
+    def test_detskie_krovatki(self):
+        """'детские кроватки' → bed_single."""
+        items = extract_items("детские кроватки")
+        assert {i["key"]: i["qty"] for i in items}.get("bed_single") == 1
+
+    def test_krovat_singular_no_regression(self):
+        """'кровать' still → bed_double (no regression)."""
+        items = extract_items("кровать")
+        assert {i["key"]: i["qty"] for i in items}.get("bed_double") == 1
+
+
+# ===================================================================
+# Full cargo scenario (the exact user input that triggered the report)
+# ===================================================================
+
+
+class TestFullCargoScenario:
+    """The exact 20-item user input should extract 17 unique keys."""
+
+    def test_full_20_item_input(self):
+        text = ("2 кресла, обеденный стол, 5 стульев, 5 местный диван, "
+                "комод, телевизор, большой холодильник, холодильник, "
+                "газовая плита, шкаф, комод, зеркало, 2 тумбочки, "
+                "диван, большой шкаф, 2 тумбочки, диван, 6 ковров, "
+                "2 кровати, 2 матраса")
+        items = extract_items(text)
+        found = {i["key"]: i["qty"] for i in items}
+        assert len(found) == 17
+        assert found["armchair"] == 2
+        assert found["dining_table"] == 1
+        assert found["chair"] == 5
+        assert found["sofa_5seat"] == 1
+        assert found["dresser"] == 2
+        assert found["tv_monitor"] == 1
+        assert found["fridge_double_door"] == 1       # "большой холодильник"
+        assert found["fridge_single_door"] == 1       # "холодильник"
+        assert found["gas_stove"] == 1
+        assert found["wardrobe_3_doors"] == 1         # "шкаф" (generic → 3-doors)
+        assert found["wardrobe_4_doors"] == 1         # "большой шкаф" → 4-doors
+        assert found["mirror"] == 1
+        assert found["nightstand"] == 4
+        assert found["sofa_large_3_seat"] == 2
+        assert found["carpet"] == 6
+        assert found["bed_double"] == 2
+        assert found["mattress"] == 2
+
+
+# ===================================================================
+# Catalog Restructuring v3.0: Fridge split
+# ===================================================================
+
+
+class TestFridgeSplit:
+    """Verify fridge_single_door, fridge_double_door, fridge_side_by_side."""
+
+    def test_plain_holodilnik(self):
+        """'холодильник' → fridge_single_door (default)."""
+        items = extract_items("холодильник")
+        assert {i["key"]: i["qty"] for i in items}.get("fridge_single_door") == 1
+
+    def test_bolshoy_holodilnik(self):
+        """'большой холодильник' → fridge_double_door."""
+        items = extract_items("большой холодильник")
+        assert {i["key"]: i["qty"] for i in items}.get("fridge_double_door") == 1
+
+    def test_dvuhdverny(self):
+        """'двухдверный холодильник' → fridge_double_door."""
+        items = extract_items("двухдверный холодильник")
+        assert {i["key"]: i["qty"] for i in items}.get("fridge_double_door") == 1
+
+    def test_side_by_side(self):
+        """'side by side' → fridge_side_by_side."""
+        items = extract_items("side by side")
+        assert {i["key"]: i["qty"] for i in items}.get("fridge_side_by_side") == 1
+
+    def test_said_bay_said(self):
+        """'сайд бай сайд' → fridge_side_by_side."""
+        items = extract_items("сайд бай сайд")
+        assert {i["key"]: i["qty"] for i in items}.get("fridge_side_by_side") == 1
+
+    def test_fridge_single_door_price(self):
+        assert ITEM_CATALOG["fridge_single_door"] == (200, 280)
+
+    def test_fridge_double_door_price(self):
+        assert ITEM_CATALOG["fridge_double_door"] == (280, 380)
+
+    def test_fridge_side_by_side_price(self):
+        assert ITEM_CATALOG["fridge_side_by_side"] == (350, 500)
+
+    def test_all_fridges_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "fridge_single_door" in heavy
+        assert "fridge_double_door" in heavy
+        assert "fridge_side_by_side" in heavy
+
+    def test_fridge_labels(self):
+        assert ITEM_LABELS["fridge_single_door"]["ru"] == "Холодильник"
+        assert ITEM_LABELS["fridge_double_door"]["en"] == "Double-door fridge"
+        assert ITEM_LABELS["fridge_side_by_side"]["en"] == "Side-by-side fridge"
+
+
+# ===================================================================
+# Catalog Restructuring v3.0: Sofa corner
+# ===================================================================
+
+
+class TestSofaCorner:
+    """Verify sofa_corner extraction."""
+
+    def test_uglovoy_divan(self):
+        """'угловой диван' → sofa_corner."""
+        items = extract_items("угловой диван")
+        assert {i["key"]: i["qty"] for i in items}.get("sofa_corner") == 1
+
+    def test_g_obrazny(self):
+        """'г-образный диван' → sofa_corner."""
+        items = extract_items("г-образный диван")
+        assert {i["key"]: i["qty"] for i in items}.get("sofa_corner") == 1
+
+    def test_corner_sofa_en(self):
+        """'corner sofa' → sofa_corner."""
+        items = extract_items("corner sofa")
+        assert {i["key"]: i["qty"] for i in items}.get("sofa_corner") == 1
+
+    def test_sofa_corner_price(self):
+        assert ITEM_CATALOG["sofa_corner"] == (280, 400)
+
+    def test_sofa_corner_is_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "sofa_corner" in heavy
+
+    def test_sofa_corner_label(self):
+        assert ITEM_LABELS["sofa_corner"]["ru"] == "Угловой диван"
+        assert ITEM_LABELS["sofa_corner"]["he"] == "ספה פינתית"
+
+
+# ===================================================================
+# Catalog Restructuring v3.0: Wardrobe 4-doors
+# ===================================================================
+
+
+class TestWardrobe4Doors:
+    """Verify wardrobe_4_doors extraction."""
+
+    def test_bolshoy_shkaf(self):
+        """'большой шкаф' → wardrobe_4_doors."""
+        items = extract_items("большой шкаф")
+        assert {i["key"]: i["qty"] for i in items}.get("wardrobe_4_doors") == 1
+
+    def test_shkaf_kupe(self):
+        """'шкаф-купе' → wardrobe_4_doors."""
+        items = extract_items("шкаф-купе")
+        assert {i["key"]: i["qty"] for i in items}.get("wardrobe_4_doors") == 1
+
+    def test_shkaf_4_dveri(self):
+        """'шкаф 4 двери' → wardrobe_4_doors, qty=1."""
+        items = extract_items("шкаф 4 двери")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("wardrobe_4_doors") == 1
+
+    def test_large_wardrobe_en(self):
+        """'large wardrobe' → wardrobe_4_doors."""
+        items = extract_items("large wardrobe")
+        assert {i["key"]: i["qty"] for i in items}.get("wardrobe_4_doors") == 1
+
+    def test_wardrobe_4_doors_price(self):
+        assert ITEM_CATALOG["wardrobe_4_doors"] == (350, 500)
+
+    def test_wardrobe_4_doors_is_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "wardrobe_4_doors" in heavy
+
+    def test_wardrobe_4_doors_label(self):
+        assert ITEM_LABELS["wardrobe_4_doors"]["ru"] == "Шкаф (4-двер.)"
+
+
+# ===================================================================
+# Catalog Restructuring v3.0: Bed with storage
+# ===================================================================
+
+
+class TestBedWithStorage:
+    """Verify bed_with_storage extraction."""
+
+    def test_krovat_s_yaschkami(self):
+        """'кровать с ящиками' → bed_with_storage."""
+        items = extract_items("кровать с ящиками")
+        assert {i["key"]: i["qty"] for i in items}.get("bed_with_storage") == 1
+
+    def test_krovat_s_podyomnym(self):
+        """'кровать с подъёмным механизмом' → bed_with_storage."""
+        items = extract_items("кровать с подъёмным механизмом")
+        assert {i["key"]: i["qty"] for i in items}.get("bed_with_storage") == 1
+
+    def test_storage_bed_en(self):
+        """'storage bed' → bed_with_storage."""
+        items = extract_items("storage bed")
+        assert {i["key"]: i["qty"] for i in items}.get("bed_with_storage") == 1
+
+    def test_bed_with_storage_price(self):
+        assert ITEM_CATALOG["bed_with_storage"] == (250, 350)
+
+    def test_bed_with_storage_is_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "bed_with_storage" in heavy
+
+    def test_bed_with_storage_label(self):
+        assert ITEM_LABELS["bed_with_storage"]["ru"] == "Кровать с ящиками"
+
+
+# ===================================================================
+# Catalog Restructuring v3.0: Exercise split (treadmill + home_gym)
+# ===================================================================
+
+
+class TestExerciseSplit:
+    """Verify treadmill and home_gym extraction."""
+
+    def test_begovaya_dorozhka(self):
+        """'беговая дорожка' → treadmill."""
+        items = extract_items("беговая дорожка")
+        assert {i["key"]: i["qty"] for i in items}.get("treadmill") == 1
+
+    def test_treadmill_en(self):
+        """'treadmill' → treadmill."""
+        items = extract_items("treadmill")
+        assert {i["key"]: i["qty"] for i in items}.get("treadmill") == 1
+
+    def test_trenazher(self):
+        """'тренажер' → home_gym."""
+        items = extract_items("тренажер")
+        assert {i["key"]: i["qty"] for i in items}.get("home_gym") == 1
+
+    def test_home_gym_en(self):
+        """'home gym' → home_gym."""
+        items = extract_items("home gym")
+        assert {i["key"]: i["qty"] for i in items}.get("home_gym") == 1
+
+    def test_treadmill_price(self):
+        assert ITEM_CATALOG["treadmill"] == (150, 250)
+
+    def test_home_gym_price(self):
+        assert ITEM_CATALOG["home_gym"] == (200, 350)
+
+    def test_both_are_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "treadmill" in heavy
+        assert "home_gym" in heavy
+
+
+# ===================================================================
+# Catalog Restructuring v3.0: New heavy items
+# ===================================================================
+
+
+class TestNewHeavyItems:
+    """Verify piano_upright, safe_small, safe_large, marble_table."""
+
+    def test_pianino(self):
+        items = extract_items("пианино")
+        assert {i["key"]: i["qty"] for i in items}.get("piano_upright") == 1
+
+    def test_royal(self):
+        items = extract_items("рояль")
+        assert {i["key"]: i["qty"] for i in items}.get("piano_upright") == 1
+
+    def test_piano_price(self):
+        assert ITEM_CATALOG["piano_upright"] == (500, 800)
+
+    def test_seyf(self):
+        items = extract_items("сейф")
+        assert {i["key"]: i["qty"] for i in items}.get("safe_small") == 1
+
+    def test_bolshoy_seyf(self):
+        items = extract_items("большой сейф")
+        assert {i["key"]: i["qty"] for i in items}.get("safe_large") == 1
+
+    def test_safe_small_price(self):
+        assert ITEM_CATALOG["safe_small"] == (200, 350)
+
+    def test_safe_large_price(self):
+        assert ITEM_CATALOG["safe_large"] == (350, 600)
+
+    def test_mramorny_stol(self):
+        items = extract_items("мраморный стол")
+        assert {i["key"]: i["qty"] for i in items}.get("marble_table") == 1
+
+    def test_marble_table_price(self):
+        assert ITEM_CATALOG["marble_table"] == (250, 400)
+
+    def test_all_are_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "piano_upright" in heavy
+        assert "safe_small" in heavy
+        assert "safe_large" in heavy
+        assert "marble_table" in heavy
+
+    def test_heavy_labels(self):
+        assert ITEM_LABELS["piano_upright"]["ru"] == "Пианино"
+        assert ITEM_LABELS["safe_small"]["ru"] == "Сейф"
+        assert ITEM_LABELS["safe_large"]["ru"] == "Сейф большой"
+        assert ITEM_LABELS["marble_table"]["ru"] == "Мраморный стол"
+
+
+# ===================================================================
+# Catalog Restructuring v3.0: Aquarium
+# ===================================================================
+
+
+class TestAquariumItem:
+    """Verify aquarium_large extraction."""
+
+    def test_akvarium(self):
+        items = extract_items("аквариум")
+        assert {i["key"]: i["qty"] for i in items}.get("aquarium_large") == 1
+
+    def test_aquarium_en(self):
+        items = extract_items("aquarium")
+        assert {i["key"]: i["qty"] for i in items}.get("aquarium_large") == 1
+
+    def test_aquarium_price(self):
+        assert ITEM_CATALOG["aquarium_large"] == (200, 350)
+
+    def test_aquarium_is_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "aquarium_large" in heavy
+
+    def test_aquarium_label(self):
+        assert ITEM_LABELS["aquarium_large"]["ru"] == "Аквариум"
+
+
+# ===================================================================
+# Catalog Restructuring v3.0: Kitchen items
+# ===================================================================
+
+
+class TestKitchenItems:
+    """Verify dishwasher, microwave, coffee_machine, kettle, mixer, juicer, kitchenware."""
+
+    def test_posudomoyka(self):
+        items = extract_items("посудомойка")
+        assert {i["key"]: i["qty"] for i in items}.get("dishwasher") == 1
+
+    def test_posudomoechnaya_mashina(self):
+        items = extract_items("посудомоечная машина")
+        assert {i["key"]: i["qty"] for i in items}.get("dishwasher") == 1
+
+    def test_dishwasher_price(self):
+        assert ITEM_CATALOG["dishwasher"] == (180, 250)
+
+    def test_dishwasher_is_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "dishwasher" in heavy
+
+    def test_mikrovolnovka(self):
+        items = extract_items("микроволновка")
+        assert {i["key"]: i["qty"] for i in items}.get("microwave") == 1
+
+    def test_svch(self):
+        items = extract_items("свч")
+        assert {i["key"]: i["qty"] for i in items}.get("microwave") == 1
+
+    def test_microwave_price(self):
+        assert ITEM_CATALOG["microwave"] == (30, 60)
+
+    def test_kofemashina(self):
+        items = extract_items("кофемашина")
+        assert {i["key"]: i["qty"] for i in items}.get("coffee_machine") == 1
+
+    def test_coffee_machine_price(self):
+        assert ITEM_CATALOG["coffee_machine"] == (30, 60)
+
+    def test_chaynik(self):
+        items = extract_items("чайник")
+        assert {i["key"]: i["qty"] for i in items}.get("kettle") == 1
+
+    def test_kettle_price(self):
+        assert ITEM_CATALOG["kettle"] == (10, 20)
+
+    def test_mikser(self):
+        items = extract_items("миксер")
+        assert {i["key"]: i["qty"] for i in items}.get("mixer") == 1
+
+    def test_blender(self):
+        items = extract_items("блендер")
+        assert {i["key"]: i["qty"] for i in items}.get("mixer") == 1
+
+    def test_mixer_price(self):
+        assert ITEM_CATALOG["mixer"] == (15, 30)
+
+    def test_sokovyzhimalka(self):
+        items = extract_items("соковыжималка")
+        assert {i["key"]: i["qty"] for i in items}.get("juicer") == 1
+
+    def test_juicer_price(self):
+        assert ITEM_CATALOG["juicer"] == (20, 40)
+
+    def test_posuda(self):
+        items = extract_items("посуда")
+        assert {i["key"]: i["qty"] for i in items}.get("kitchenware") == 1
+
+    def test_kastryuli(self):
+        items = extract_items("кастрюли")
+        assert {i["key"]: i["qty"] for i in items}.get("kitchenware") == 1
+
+    def test_kitchenware_price(self):
+        assert ITEM_CATALOG["kitchenware"] == (40, 80)
+
+    def test_kitchen_not_heavy(self):
+        """Microwave, coffee machine, kettle, mixer, juicer, kitchenware are NOT heavy."""
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "microwave" not in heavy
+        assert "coffee_machine" not in heavy
+        assert "kettle" not in heavy
+        assert "mixer" not in heavy
+        assert "juicer" not in heavy
+        assert "kitchenware" not in heavy
+
+    def test_kitchen_labels(self):
+        assert ITEM_LABELS["dishwasher"]["ru"] == "Посудомойка"
+        assert ITEM_LABELS["microwave"]["ru"] == "Микроволновка"
+        assert ITEM_LABELS["coffee_machine"]["ru"] == "Кофемашина"
+        assert ITEM_LABELS["kettle"]["ru"] == "Чайник"
+        assert ITEM_LABELS["mixer"]["ru"] == "Миксер"
+        assert ITEM_LABELS["juicer"]["ru"] == "Соковыжималка"
+        assert ITEM_LABELS["kitchenware"]["ru"] == "Посуда/утварь"
+
+
+# ===================================================================
+# Catalog Restructuring v3.0: TV stand
+# ===================================================================
+
+
+class TestTvStand:
+    """Verify tv_stand extraction."""
+
+    def test_tumba_pod_televizor(self):
+        """'тумба под телевизор' → tv_stand (not tv_monitor)."""
+        items = extract_items("тумба под телевизор")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("tv_stand") == 1
+        assert "tv_monitor" not in found
+
+    def test_podstavka_pod_televizor(self):
+        items = extract_items("подставка под телевизор")
+        assert {i["key"]: i["qty"] for i in items}.get("tv_stand") == 1
+
+    def test_tv_stand_en(self):
+        items = extract_items("tv stand")
+        assert {i["key"]: i["qty"] for i in items}.get("tv_stand") == 1
+
+    def test_tv_stand_price(self):
+        assert ITEM_CATALOG["tv_stand"] == (60, 120)
+
+    def test_tv_stand_not_heavy(self):
+        heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
+        assert "tv_stand" not in heavy
+
+    def test_tv_stand_label(self):
+        assert ITEM_LABELS["tv_stand"]["ru"] == "Тумба под ТВ"
+        assert ITEM_LABELS["tv_stand"]["en"] == "TV stand"
+
+    def test_televizor_still_tv_monitor(self):
+        """'телевизор' still maps to tv_monitor (no regression)."""
+        items = extract_items("телевизор")
+        assert {i["key"]: i["qty"] for i in items}.get("tv_monitor") == 1

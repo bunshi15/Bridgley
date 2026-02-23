@@ -1325,7 +1325,7 @@ class TestCrewMessageMultiPickup:
                     },
                     "volume_category": "large",
                     "cargo_items": [
-                        {"key": "sofa_3seat", "qty": 1},
+                        {"key": "sofa_large_3_seat", "qty": 1},
                         {"key": "box_standard", "qty": 5},
                     ],
                     "estimate_min": 1200,

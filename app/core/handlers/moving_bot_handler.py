@@ -45,6 +45,7 @@ from app.core.bots.moving_bot_validators import (
 from app.core.bots.moving_bot_pricing import estimate_price, PricingConfig
 from app.core.bots.moving_bot_geo import classify_geo_points, classify_route
 from app.infra.tenant_registry import get_operator_config
+from app.config import settings as _app_settings
 
 
 _TZ = ZoneInfo("Asia/Jerusalem")
@@ -667,6 +668,13 @@ class MovingBotHandler:
             "complexity_applied": breakdown.get("complexity_applied", False),
         }
         logger.info("estimate_computed", extra=log_data)
+
+        # Global display toggle: operator still sees estimate_min/max,
+        # but user and crew get the no-price message.
+        if not _app_settings.estimate_display_enabled:
+            state.data.custom["estimate_display_disabled"] = True
+            state.step = "estimate"
+            return state, get_text("estimate_no_price", lang), False
 
         summary = get_text("estimate_summary", lang).format(
             min_price=est["estimate_min"],

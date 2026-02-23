@@ -164,10 +164,11 @@ def format_crew_message(lead_id: str, payload: dict[str, Any]) -> str:
 
     # --- Estimate ---
     estimate_suppressed = custom.get("estimate_suppressed", False)
+    estimate_display_disabled = custom.get("estimate_display_disabled", False)
     estimate_min = custom.get("estimate_min")
     estimate_max = custom.get("estimate_max")
     estimate_str = ""
-    if not estimate_suppressed and estimate_min is not None and estimate_max is not None:
+    if not estimate_suppressed and not estimate_display_disabled and estimate_min is not None and estimate_max is not None:
         estimate_str = f"₪{estimate_min}–₪{estimate_max}"
 
     # --- Extras (services) ---

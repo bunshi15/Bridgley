@@ -149,7 +149,7 @@ All done! Here's a summary of everything that was implemented:
 
 All 4 bugs are fixed:
 
-1. ✅ "5 местный диван" → `sofa_5seat x1` (was `sofa_3seat x5`)
+1. ✅ "5 местный диван" → `sofa_5seat x1` (was `sofa_large_3_seat x5`)
 2. ✅ "детская кровать" → `bed_single x1` (was `bed_double x1`)
 3. ✅ "матрас" → `mattress x1` (was NOT FOUND)
 4. ✅ Combined: 4 unique items, no duplicates (was `bed x2`)
@@ -187,3 +187,67 @@ All done! Here's a summary of what was implemented:
 | `crew_view.py` | Skip estimate line when `estimate_suppressed` |
 | `test_moving_bot.py` | 37+ new test cases across 6 new test classes |
 
+All done! Here's the summary:
+
+## ✅ All 5 Steps Complete — 564 tests passing
+
+### Task 1: New Catalog Items
+
+| Item | Key | Price Range | Aliases |
+|------|-----|------------|---------|
+| Будуар | `vanity_table` | ₪100–180 | будуар, будуар со стулом, женский стол с зеркалом, туалетный столик, трюмо, vanity table, dressing table, שולחן איפור |
+| Обувница | `shoe_cabinet` | ₪60–120 | обувница, шкаф для обуви, комод для обуви, полка для обуви, тумба для обуви, shoe cabinet, shoe rack, ארון נעליים |
+
+Both are NOT heavy items. Longest-first matching prevents collisions with existing "полка" (→ shelving_unit) and "шкаф" (→ wardrobe_3_doors).
+
+### Task 2: Estimate Display Toggle
+
+**New setting:** `ESTIMATE_DISPLAY_ENABLED` (env var) in `app/config.py`
+- Default: `True` (no behavior change)
+- Set to `False` to hide price from user & crew
+
+**How it works:**
+- When disabled: estimate is still **computed and stored** (`estimate_min`, `estimate_max`, `estimate_breakdown`) so the **operator sees full data**
+- User gets the `estimate_no_price` message instead of the price range
+- Crew message omits the `₪` estimate line
+- A new flag `estimate_display_disabled` in `state.data.custom` distinguishes this from the automatic `estimate_suppressed` (parsing quality) logic
+
+### Files Modified:
+| File | Change |
+|------|--------|
+| `pricing_config.json` | 2 new items in item_catalog, item_aliases, item_labels |
+| `app/config.py` | New `estimate_display_enabled: bool = True` setting |
+| `moving_bot_handler.py` | Import `_app_settings`, check toggle after logging in `_transition_to_estimate()` |
+| `crew_view.py` | Added `estimate_display_disabled` flag check |
+| `test_moving_bot.py` | 26 new tests (10 vanity, 12 shoe cabinet, 4 display toggle) |
+
+All done! Here's a summary of everything that was implemented:
+
+## Catalog Restructuring v3.0 — Complete
+
+### pricing_config.json (full rewrite of item sections)
+**46 items** in catalog (up from 33), with all splits, renames, and additions:
+
+| Change | Details |
+|--------|---------|
+| **Fridges** | `refrigerator` → `fridge_single_door`, `refrigerator_large` → `fridge_double_door`, `refrigerator_small` merged → `fridge_single_door`, NEW `fridge_side_by_side` [350,500] |
+| **Sofas** | `sofa_2seat` → `sofa_small_2_seat`, `sofa_3seat` → `sofa_large_3_seat`, NEW `sofa_corner` [280,400], keep `sofa_4seat` + `sofa_5seat` |
+| **Wardrobes** | `wardrobe_small` → `wardrobe_2_doors`, `wardrobe_large` → `wardrobe_3_doors` (default "шкаф"), NEW `wardrobe_4_doors` [350,500] ("большой шкаф", "шкаф-купе") |
+| **Beds** | `bed_single` + `bed_double` unchanged, NEW `bed_with_storage` [250,350] |
+| **Exercise** | `exercise_machine` split → `treadmill` [150,250] + `home_gym` [200,350] |
+| **New heavy** | `piano_upright` [500,800], `safe_small` [200,350], `safe_large` [350,600], `marble_table` [250,400] |
+| **Sport** | `aquarium_large` [200,350] |
+| **Kitchen** | `dishwasher` [180,250], `microwave` [30,60], `coffee_machine` [30,60], `kettle` [10,20], `mixer` [15,30], `juicer` [20,40], `kitchenware` [40,80] |
+| **Other** | `tv_stand` [60,120] |
+
+### Files modified
+- `pricing_config.json` — full item sections rewrite (v2.0→v3.0)
+- `config.py` — example text "refrigerator"→"fridge"
+- `test_moving_bot.py` — 50+ existing tests updated + 80 new tests added
+- `test_translation.py` — 1 key reference updated
+- `docs/EPIC_G_6.md` — 2 cosmetic references updated
+- **ZERO Python app code changes** (all config-driven)
+
+### Test results
+- **693 tests in test_moving_bot.py** (up from 613)
+- **1267 total tests** — all passing

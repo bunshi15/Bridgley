@@ -143,7 +143,7 @@ MOVING_TRANSLATIONS = {
     # Errors
     "err_cargo_too_short": Translation(
         ru="Можешь чуть подробнее? Например: «диван, холодильник, коробки».",
-        en="Can you be more specific? For example: \"sofa, refrigerator, boxes\".",
+        en="Can you be more specific? For example: \"sofa, fridge, boxes\".",
         he="אתה יכול להיות יותר ספציפי? למשל: \"ספה, מקרר, קרטונים\"."
     ),
 
