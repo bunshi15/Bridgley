@@ -13,6 +13,7 @@ Configure via settings:
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
@@ -416,6 +417,88 @@ from app.core.dispatch.services import notify_operator_crew_fallback  # noqa: F4
 
 
 
+@dataclass
+class _MediaDelivery:
+    """Structured media delivery result for operator notifications (EPIC G4.2)."""
+    inline_photo_urls: list[str]   # Photos sent as inline attachments
+    link_lines: list[str]          # Text lines for link-only media (videos, overflow photos)
+
+
+async def _get_media_for_lead(tenant_id: str, lead_id: str) -> _MediaDelivery:
+    """
+    Get media for a lead with photo threshold optimization (G4.2).
+
+    Rules:
+    - Images ≤ MAX_INLINE_MEDIA_COUNT → inline attachment
+    - Images > threshold → signed links in message body
+    - Videos → always signed links (never inline)
+
+    Returns structured delivery with inline URLs and link text lines.
+    """
+    from app.infra.pg_photo_repo_async import get_photo_repo
+    from app.transport.security import generate_signed_media_url
+
+    inline_urls: list[str] = []
+    link_lines: list[str] = []
+
+    threshold = settings.max_inline_media_count
+
+    # Resolve base URL for signed /media links
+    base_url = None
+    use_s3_direct = bool(settings.s3_public_url)
+    if not use_s3_direct:
+        if settings.twilio_webhook_url:
+            base_url = settings.twilio_webhook_url.rsplit("/webhooks", 1)[0]
+        else:
+            logger.warning("No webhook URL configured, cannot generate media URLs")
+            return _MediaDelivery(inline_photo_urls=[], link_lines=[])
+
+    def _signed_url(asset_id: str) -> str:
+        return generate_signed_media_url(base_url, asset_id)
+
+    # --- Photos (existing photos table) ---
+    try:
+        photo_repo = get_photo_repo()
+        photos = await photo_repo.get_for_lead(tenant_id, lead_id, limit=50)
+    except Exception as e:
+        logger.warning("Failed to get photos for lead %s: %s", lead_id[:8], e)
+        photos = []
+
+    photo_urls_all: list[str] = []
+    for photo in photos:
+        if use_s3_direct and photo.s3_url:
+            photo_urls_all.append(photo.s3_url)
+        else:
+            photo_urls_all.append(_signed_url(str(photo.id)))
+
+    # Apply threshold: ≤ threshold → inline, otherwise links only
+    if len(photo_urls_all) <= threshold:
+        inline_urls = photo_urls_all
+    else:
+        # All photos as links (avoid partial inline + links confusion)
+        for i, url in enumerate(photo_urls_all, 1):
+            link_lines.append(f"  📷 Фото {i}: {url}")
+
+    # --- Media assets (EPIC G — videos, etc.) ---
+    try:
+        from app.infra.pg_media_asset_repo_async import get_media_asset_repo
+
+        asset_repo = get_media_asset_repo()
+        assets = await asset_repo.get_for_lead(tenant_id, lead_id, limit=50)
+    except Exception as e:
+        logger.warning("Failed to get media assets for lead %s: %s", lead_id[:8], e)
+        assets = []
+
+    for asset in assets:
+        url = _signed_url(str(asset.id))
+        kind_label = {"video": "🎥 Видео", "audio": "🎵 Аудио", "document": "📄 Документ"}.get(
+            asset.kind, f"📎 {asset.kind.capitalize()}"
+        )
+        link_lines.append(f"  {kind_label}: {url}")
+
+    return _MediaDelivery(inline_photo_urls=inline_urls, link_lines=link_lines)
+
+
 async def _get_photo_urls_for_lead(tenant_id: str, lead_id: str) -> list[str]:
     """
     Get photo URLs for a specific lead/ticket.
@@ -527,15 +610,30 @@ async def notify_operator(
         # Format message
         message_body = format_lead_message(chat_id, payload)
 
-        # Get photo URLs for THIS lead only (not previous tickets)
+        # EPIC G4.2: Get media with threshold optimization
         data = payload.get("data", payload)
         photo_count = data.get("photo_count", 0)
         photo_urls = []
+        media_link_lines: list[str] = []
 
         if photo_count > 0:
-            photo_urls = await _get_photo_urls_for_lead(resolved_tenant_id, lead_id)
+            delivery = await _get_media_for_lead(resolved_tenant_id, lead_id)
+            photo_urls = delivery.inline_photo_urls
+            media_link_lines = delivery.link_lines
             if photo_urls:
-                logger.info(f"Attaching {len(photo_urls)} photos to operator notification (lead={lead_id[:8]})")
+                logger.info(
+                    "Attaching %d inline photos to operator notification (lead=%s)",
+                    len(photo_urls), lead_id[:8],
+                )
+            if media_link_lines:
+                logger.info(
+                    "Appending %d media links to operator message (lead=%s)",
+                    len(media_link_lines), lead_id[:8],
+                )
+
+        # Append media link lines to message body
+        if media_link_lines:
+            message_body += "\n\n📎 Медиа:\n" + "\n".join(media_link_lines)
 
         # Extract structured fields for template fallback (WhatsApp 24h window)
         custom = data.get("custom", {})

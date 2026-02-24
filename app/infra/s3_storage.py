@@ -214,6 +214,69 @@ class S3Storage:
         except ClientError:
             return False
 
+    # ------------------------------------------------------------------
+    # Generic object storage (EPIC G)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def build_media_key(
+        tenant_id: str,
+        asset_id: str,
+        ext: str,
+        lead_id: str | None = None,
+    ) -> str:
+        """Build S3 key for a generic media asset.
+
+        Format: ``media/{tenant_id}/{lead_id or 'unlinked'}/{asset_id}.{ext}``
+        """
+        lead_part = lead_id or "unlinked"
+        return f"media/{tenant_id}/{lead_part}/{asset_id}.{ext}"
+
+    async def put_object(self, key: str, data: bytes, content_type: str) -> None:
+        """Upload any object to S3 by explicit key."""
+        try:
+            self._client.put_object(
+                Bucket=self._bucket,
+                Key=key,
+                Body=data,
+                ContentType=content_type,
+            )
+            logger.info("S3 object uploaded: key=%s, size=%d", key[:40], len(data))
+            inc_counter("s3_uploads_success")
+        except ClientError as e:
+            logger.error("S3 put_object failed: key=%s, error=%s", key[:40], e, exc_info=True)
+            inc_counter("s3_uploads_failed")
+            raise
+
+    async def delete_object(self, key: str) -> bool:
+        """Delete an object by S3 key. Returns True on success."""
+        try:
+            self._client.delete_object(Bucket=self._bucket, Key=key)
+            logger.info("S3 object deleted: key=%s", key[:40])
+            return True
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchKey":
+                return False
+            logger.error("S3 delete_object failed: key=%s, error=%s", key[:40], e, exc_info=True)
+            raise
+
+    async def generate_presigned_get_url(self, key: str, expires_seconds: int = 1800) -> str:
+        """Generate a presigned GET URL for a private S3 object.
+
+        Args:
+            key: The S3 object key.
+            expires_seconds: URL lifetime (default 30 min, max per spec 30 min).
+
+        Returns:
+            Presigned URL string.
+        """
+        url = self._client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": self._bucket, "Key": key},
+            ExpiresIn=min(expires_seconds, 1800),
+        )
+        return url
+
 
 # Global instance (lazy initialization)
 _s3_storage: S3Storage | None = None

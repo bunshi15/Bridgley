@@ -1,4 +1,4 @@
-# EPIC G — Secure Media Intake + Optimized Operator Delivery + Pricing Guards
+# EPIC G — Secure Media Intake + Optimized Operator Delivery
 
 ---
 
@@ -304,3 +304,40 @@ Not part of v1 runtime.
 * Architecture ready for STT v2.
 
 ---
+
+# Implementation Status
+
+| Section | Status | Notes |
+|---------|--------|-------|
+| G1.1 media_assets table | DONE | `011_add_media_assets_table.sql` |
+| G1.2 Repository layer | DONE | `pg_media_asset_repo_async.py` |
+| G2.1 Generic S3 storage | DONE | `put_object`, `delete_object`, `generate_presigned_get_url` |
+| G2.2 TTL cleanup | DONE | `handle_media_cleanup` + `/admin/media/cleanup` |
+| G3.1 Video in handle_process_media | DONE | Routes `video/*` to `process_video_item` |
+| G3.2 Lead association | DONE | `lead_id` passed in job payload, `link_to_lead` |
+| G4.1 Generic /media endpoint | DONE | Falls back to `media_assets` after `photos` |
+| G4.2 Photo threshold | DONE | `_get_media_for_lead` with `max_inline_media_count` |
+| G4.3 Logging rules | DONE | Only `asset_id[:8]` logged |
+| G5 Transcription hook | DONE | Nullable fields in migration |
+| G6 Pricing complexity guards | DONE | (Previous sessions) |
+| G7 Acceptance criteria | DONE | 40 tests in `test_media_assets.py` |
+
+EPIC G is fully implemented. Here's a summary:
+
+## EPIC G — Secure Media Intake + Optimized Operator Delivery: COMPLETE
+
+**Files created (3):**
+- `app/infra/sql/011_add_media_assets_table.sql` — DB migration with G5 transcription fields
+- `app/infra/pg_media_asset_repo_async.py` — Repository (save, get_by_id, get_for_lead, link_to_lead, delete_expired)
+- `tests/test_media_assets.py` — 40 new tests
+
+**Files modified (7):**
+- `app/config.py` — 5 new settings + schema version bump
+- `app/infra/s3_storage.py` — 4 new methods (build_media_key, put_object, delete_object, generate_presigned_get_url)
+- `app/infra/media_service.py` — `process_video_item()` method + video ext mapping
+- `app/infra/job_worker.py` — Video routing in `handle_process_media` + `handle_media_cleanup`
+- `app/transport/http_app.py` — `/media/{id}` fallback to media_assets + `/admin/media/cleanup` + handler registration
+- `app/transport/security.py` — `_get_media_signing_key()` with `media_signing_key` fallback
+- `app/infra/notification_service.py` — `_get_media_for_lead()` with G4.2 threshold + `_MediaDelivery` dataclass
+
+**Test results:** 1307 passed, 0 failures (was 1267, +40 new)

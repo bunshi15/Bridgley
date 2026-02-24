@@ -312,6 +312,7 @@ async def lifespan(fastapi_app: FastAPI):
             handle_outbound_reply,
             handle_process_media,
             handle_notify_operator,
+            handle_media_cleanup,
         )
         from app.core.dispatch.jobs import handle_notify_crew_fallback
 
@@ -331,6 +332,7 @@ async def lifespan(fastapi_app: FastAPI):
             job_worker.register("outbound_reply", handle_outbound_reply)
             job_worker.register("process_media", handle_process_media)
             job_worker.register("notify_operator", handle_notify_operator)
+            job_worker.register("media_cleanup", handle_media_cleanup)
 
         if worker_role in ("dispatch", "all"):
             job_worker.register("notify_crew_fallback", handle_notify_crew_fallback)
@@ -693,7 +695,38 @@ async def get_photo(photo_id: str, request: Request):
     photo = await repo.get_by_id(uuid_id)
 
     if not photo:
-        raise HTTPException(status_code=404, detail="Photo not found")
+        # EPIC G: Fall back to media_assets table (videos, generic media)
+        from app.infra.pg_media_asset_repo_async import get_media_asset_repo
+        from app.infra.s3_storage import get_s3_storage, is_s3_available
+
+        asset_repo = get_media_asset_repo()
+        asset = await asset_repo.get_by_id(uuid_id)
+
+        if not asset:
+            raise HTTPException(status_code=404, detail="Media not found")
+
+        # Media assets are always in S3 — generate presigned redirect
+        if not is_s3_available():
+            logger.error("S3 not available for media asset: %s", str(asset.id)[:8])
+            raise HTTPException(status_code=502, detail="Storage not configured")
+
+        try:
+            s3 = get_s3_storage()
+            presigned_url = await s3.generate_presigned_get_url(asset.s3_key, expires_seconds=1800)
+
+            # G4.3: log only truncated asset_id, never full URL
+            logger.info("Media asset served via presigned URL: asset=%s", str(asset.id)[:8])
+
+            return RedirectResponse(
+                url=presigned_url,
+                status_code=302,
+                headers={"Cache-Control": "private, max-age=300"},
+            )
+        except Exception as e:
+            logger.error("Failed to generate presigned URL: asset=%s, error=%s", str(asset.id)[:8], e)
+            raise HTTPException(status_code=502, detail="Storage unavailable")
+
+    # ----- Existing photo serving logic (backward compatible) -----
 
     # If stored in S3
     if photo.s3_url:
@@ -928,6 +961,37 @@ async def admin_jobs_cleanup():
         "deleted_completed": completed,
         "deleted_failed": failed,
         "reset_stale": stale,
+    }
+
+
+@app.post("/admin/media/cleanup", dependencies=[Depends(require_admin_host), Depends(require_admin_auth)])
+async def admin_media_cleanup():
+    """
+    Trigger media TTL cleanup — ADMIN only (EPIC G2.2).
+    Deletes expired media assets from S3 and database.
+    """
+    from app.infra.pg_media_asset_repo_async import get_media_asset_repo
+    from app.infra.s3_storage import get_s3_storage, is_s3_available
+
+    repo = get_media_asset_repo()
+    expired = await repo.delete_expired(batch_size=200)
+
+    s3_deleted = 0
+    s3_errors = 0
+
+    if expired and is_s3_available():
+        s3 = get_s3_storage()
+        for record in expired:
+            try:
+                await s3.delete_object(record.s3_key)
+                s3_deleted += 1
+            except Exception:
+                s3_errors += 1
+
+    return {
+        "expired_deleted": len(expired),
+        "s3_deleted": s3_deleted,
+        "s3_errors": s3_errors,
     }
 
 

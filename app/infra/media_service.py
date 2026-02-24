@@ -33,6 +33,19 @@ from app.infra.pg_photo_repo_async import get_photo_repo
 
 logger = get_logger(__name__)
 
+# Content-type → file extension mapping for video
+_VIDEO_EXT_MAP = {
+    "video/mp4": "mp4",
+    "video/quicktime": "mov",
+    "video/webm": "webm",
+    "video/3gpp": "3gp",
+}
+
+
+def _ext_from_content_type(ct: str) -> str:
+    """Derive file extension from content-type, defaulting to 'bin'."""
+    return _VIDEO_EXT_MAP.get(ct, "bin")
+
 
 @dataclass
 class MediaServiceConfig:
@@ -287,6 +300,120 @@ class MediaService:
             "height": processed.height,
             "content_type": processed.content_type,
         }
+
+    async def process_video_item(
+        self,
+        media: MediaItem,
+        tenant_id: str,
+        chat_id: str,
+        provider: str = "twilio",
+        message_id: str = "",
+        lead_id: str | None = None,
+    ) -> Optional[dict]:
+        """
+        Download and store a video attachment (no re-encoding).
+
+        Validates size and content-type, uploads raw bytes to S3,
+        saves metadata to ``media_assets`` table.
+
+        Returns dict with asset metadata, or None on failure.
+        """
+        from uuid import uuid4
+        from datetime import datetime, timedelta, timezone
+        from app.config import settings
+        from app.infra.s3_storage import get_s3_storage, is_s3_available
+        from app.infra.pg_media_asset_repo_async import get_media_asset_repo
+
+        if not is_s3_available():
+            logger.warning("S3 not available — cannot store video")
+            return None
+
+        # Validate content-type against allowlist
+        allowed = {t.strip() for t in settings.media_allowed_video_types.split(",")}
+        ct = media.content_type or ""
+        if ct not in allowed:
+            logger.warning("Video content-type not allowed: %s", ct)
+            return None
+
+        try:
+            primary, fallback = self._get_fetcher(provider)
+
+            fetch_result = None
+            try:
+                fetch_result = await primary.fetch(media, message_id)
+            except MediaFetchError as e:
+                if fallback:
+                    logger.warning(
+                        "Primary fetcher (%s) failed for video: %s. Falling back.",
+                        primary.__class__.__name__, e,
+                    )
+                    fetch_result = await fallback.fetch(media, message_id)
+                else:
+                    raise
+
+            data = fetch_result.data
+
+            # Validate size
+            max_bytes = settings.media_video_max_size_mb * 1024 * 1024
+            if len(data) > max_bytes:
+                logger.warning(
+                    "Video too large: %d bytes (max %d)", len(data), max_bytes,
+                )
+                return None
+
+            # Generate UUID filename
+            asset_uuid = uuid4()
+            ext = _ext_from_content_type(ct)
+            filename = f"{asset_uuid}.{ext}"
+
+            s3 = get_s3_storage()
+            s3_key = s3.build_media_key(tenant_id, str(asset_uuid), ext, lead_id=lead_id)
+            await s3.put_object(s3_key, data, ct)
+
+            # Save metadata row
+            repo = get_media_asset_repo()
+            expires_at = datetime.now(timezone.utc) + timedelta(days=settings.media_ttl_days)
+
+            asset_id = await repo.save(
+                tenant_id=tenant_id,
+                chat_id=chat_id,
+                provider=provider,
+                kind="video",
+                content_type=ct,
+                size_bytes=len(data),
+                filename=filename,
+                s3_key=s3_key,
+                lead_id=lead_id,
+                message_id=message_id,
+                expires_at=expires_at,
+            )
+
+            logger.info(
+                "Video stored: asset=%s, tenant=%s, size=%d",
+                str(asset_id)[:8], tenant_id, len(data),
+            )
+            return {
+                "asset_id": str(asset_id),
+                "kind": "video",
+                "filename": filename,
+                "size_bytes": len(data),
+                "content_type": ct,
+                "s3_key": s3_key,
+            }
+
+        except (MediaFetchError,) as e:
+            logger.warning(
+                "Video processing failed: tenant=%s, chat=%s***, error=%s",
+                tenant_id, chat_id[:6], e,
+            )
+            return None
+        except Exception as e:
+            logger.error(
+                "Unexpected error processing video: tenant=%s, chat=%s***, error=%s",
+                tenant_id, chat_id[:6], e,
+                exc_info=True,
+            )
+            return None
 
     def process_upload(self, data: bytes) -> ProcessedImage:
         """

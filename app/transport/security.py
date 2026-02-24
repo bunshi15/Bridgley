@@ -874,24 +874,30 @@ class RateLimitByKey:
 # =============================================================================
 
 
+def _get_media_signing_key() -> str | None:
+    """Return the effective media signing key (EPIC G: dedicated key, fallback to admin_token)."""
+    return settings.media_signing_key or settings.admin_token
+
+
 def generate_media_signature(photo_id: str, expires: int) -> str:
     """
     Generate HMAC-SHA256 signature for a media URL.
 
     Args:
-        photo_id: The photo UUID string
+        photo_id: The photo/asset UUID string
         expires: Unix timestamp when the URL expires
 
     Returns:
         Truncated hex signature (16 chars) — compact but sufficient
         for time-limited URLs.
     """
-    if not settings.admin_token:
-        raise RuntimeError("ADMIN_TOKEN required for media URL signing")
+    key = _get_media_signing_key()
+    if not key:
+        raise RuntimeError("ADMIN_TOKEN or MEDIA_SIGNING_KEY required for media URL signing")
 
     signing_string = f"{photo_id}:{expires}"
     sig = hmac.new(
-        settings.admin_token.encode(),
+        key.encode(),
         signing_string.encode(),
         hashlib.sha256,
     ).hexdigest()[:16]
@@ -915,14 +921,15 @@ def verify_media_signature(photo_id: str, sig: str, exp: str) -> tuple[bool, str
     Verify HMAC signature and expiration for a media URL.
 
     Args:
-        photo_id: The photo UUID from the URL path
+        photo_id: The photo/asset UUID from the URL path
         sig: The signature from ?sig= query param
         exp: The expiration timestamp from ?exp= query param
 
     Returns:
         (is_valid, error_message)
     """
-    if not settings.admin_token:
+    key = _get_media_signing_key()
+    if not key:
         return False, "Server misconfigured (no signing key)"
 
     # Parse and check expiration

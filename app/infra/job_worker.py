@@ -60,7 +60,11 @@ async def handle_outbound_reply(job: Job) -> None:
 
 
 async def handle_process_media(job: Job) -> None:
-    """Download, validate, re-encode, and save media attachments."""
+    """Download, validate, re-encode, and save media attachments.
+
+    Supports images (existing pipeline → photos table) and
+    videos (EPIC G → media_assets table + S3).
+    """
     from app.core.engine.domain import MediaItem
     from app.infra.media_service import get_media_service
     from app.infra.tenant_registry import get_tenant_for_channel
@@ -70,6 +74,7 @@ async def handle_process_media(job: Job) -> None:
     tenant_id = payload["tenant_id"]
     chat_id = payload["chat_id"]
     message_id = payload.get("message_id", "")
+    lead_id = payload.get("lead_id")
 
     # Look up tenant credentials for media URL resolution
     binding = get_tenant_for_channel(job.tenant_id, provider)
@@ -101,6 +106,27 @@ async def handle_process_media(job: Job) -> None:
                     )
                 media_item.url = download_url
 
+        ct = media_item.content_type or ""
+
+        # EPIC G: route video to new pipeline
+        if ct.startswith("video/"):
+            result = await media_service.process_video_item(
+                media_item,
+                tenant_id,
+                chat_id,
+                provider=provider,
+                message_id=message_id,
+                lead_id=lead_id,
+            )
+            if result:
+                logger.info(
+                    "Job video processed: asset=%s",
+                    result.get("asset_id", "n/a")[:8],
+                    extra={"job_id": job.id, "provider": provider},
+                )
+            continue
+
+        # Existing image pipeline
         processed = await media_service.process_and_save(
             media_item,
             tenant_id,
@@ -113,6 +139,46 @@ async def handle_process_media(job: Job) -> None:
                 f"Job media processed: photo_id={processed.get('uuid', 'n/a')[:8]}",
                 extra={"job_id": job.id, "provider": provider},
             )
+
+
+async def handle_media_cleanup(job: Job) -> None:
+    """Delete expired media assets from S3 and DB (EPIC G2.2).
+
+    Idempotent: safe to call repeatedly. S3 errors for individual
+    objects are logged but do not fail the entire job.
+    """
+    from app.infra.pg_media_asset_repo_async import get_media_asset_repo
+    from app.infra.s3_storage import get_s3_storage, is_s3_available
+
+    batch_size = job.payload.get("batch_size", 100)
+    repo = get_media_asset_repo()
+
+    expired = await repo.delete_expired(batch_size=batch_size)
+    if not expired:
+        logger.info("Media cleanup: no expired assets")
+        return
+
+    s3_deleted = 0
+    s3_errors = 0
+
+    if is_s3_available():
+        s3 = get_s3_storage()
+        for record in expired:
+            try:
+                await s3.delete_object(record.s3_key)
+                s3_deleted += 1
+            except Exception as exc:
+                s3_errors += 1
+                logger.warning(
+                    "S3 delete failed during cleanup: key=%s, error=%s",
+                    record.s3_key[:40], exc,
+                )
+
+    logger.info(
+        "Media cleanup done: expired=%d, s3_deleted=%d, s3_errors=%d",
+        len(expired), s3_deleted, s3_errors,
+    )
+    inc_counter("media_cleanup_completed", count=len(expired))
 
 
 async def handle_notify_operator(job: Job) -> None:

@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # Database
-    expected_schema_version: str = "000_base.sql"  # Update on deploy when new migrations are added
+    expected_schema_version: str = "011_add_media_assets_table.sql"  # Update on deploy when new migrations are added
     database_url: str | None = None
     pghost: str = "localhost"
     pgport: int = 5432
@@ -127,6 +127,13 @@ class Settings(BaseSettings):
     # TTL for signed /media URLs (used in operator notifications).
     # Telegram/WhatsApp servers fetch photos via these URLs.
     media_url_ttl_seconds: int = 3600  # 1 hour
+
+    # EPIC G: Video/Media settings
+    media_video_max_size_mb: int = 64                # Max video upload size
+    media_ttl_days: int = 90                          # Auto-expire media assets after N days
+    media_signing_key: str | None = None              # Separate HMAC key for media URLs; falls back to admin_token
+    max_inline_media_count: int = 5                   # G4.2 photo threshold: above this → signed links only
+    media_allowed_video_types: str = "video/mp4,video/quicktime,video/webm,video/3gpp"
 
     # Job Worker (v0.7 DB-backed queue)
     job_worker_enabled: bool = False          # Master switch — enable explicitly in worker service

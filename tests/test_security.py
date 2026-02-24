@@ -24,6 +24,7 @@ def _make_mock_settings(**overrides):
         "trust_proxy_headers": False,
         "internal_networks": "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,::1/128",
         "media_url_ttl_seconds": 3600,
+        "media_signing_key": None,  # EPIC G: dedicated media signing key (falls back to admin_token)
         "admin_auth_mode": "both",
         "app_env": "dev",
         "admin_host": None,
@@ -147,6 +148,7 @@ class TestMediaSignature:
     @patch("app.transport.security.settings")
     def test_roundtrip(self, mock_settings):
         mock_settings.admin_token = "test-admin-token-1234567890123456"
+        mock_settings.media_signing_key = None
         mock_settings.media_url_ttl_seconds = 3600
         from app.transport.security import generate_media_signature, verify_media_signature
         photo_id = "abc-123"
@@ -159,6 +161,7 @@ class TestMediaSignature:
     @patch("app.transport.security.settings")
     def test_expired(self, mock_settings):
         mock_settings.admin_token = "test-admin-token-1234567890123456"
+        mock_settings.media_signing_key = None
         from app.transport.security import generate_media_signature, verify_media_signature
         photo_id = "abc-123"
         exp = int(time.time()) - 10  # already expired
@@ -170,6 +173,7 @@ class TestMediaSignature:
     @patch("app.transport.security.settings")
     def test_tampered_signature(self, mock_settings):
         mock_settings.admin_token = "test-admin-token-1234567890123456"
+        mock_settings.media_signing_key = None
         from app.transport.security import verify_media_signature
         exp = str(int(time.time()) + 3600)
         valid, err = verify_media_signature("abc-123", "tampered_sig_xxx", exp)
@@ -179,6 +183,7 @@ class TestMediaSignature:
     @patch("app.transport.security.settings")
     def test_tampered_photo_id(self, mock_settings):
         mock_settings.admin_token = "test-admin-token-1234567890123456"
+        mock_settings.media_signing_key = None
         from app.transport.security import generate_media_signature, verify_media_signature
         exp = int(time.time()) + 3600
         sig = generate_media_signature("original-id", exp)
@@ -188,6 +193,7 @@ class TestMediaSignature:
     @patch("app.transport.security.settings")
     def test_invalid_expiration(self, mock_settings):
         mock_settings.admin_token = "test-admin-token-1234567890123456"
+        mock_settings.media_signing_key = None
         from app.transport.security import verify_media_signature
         valid, err = verify_media_signature("abc", "sig", "not-a-number")
         assert valid is False
@@ -196,6 +202,7 @@ class TestMediaSignature:
     @patch("app.transport.security.settings")
     def test_no_admin_token_verify(self, mock_settings):
         mock_settings.admin_token = None
+        mock_settings.media_signing_key = None
         from app.transport.security import verify_media_signature
         valid, err = verify_media_signature("abc", "sig", "12345")
         assert valid is False
@@ -204,6 +211,7 @@ class TestMediaSignature:
     @patch("app.transport.security.settings")
     def test_no_admin_token_generate_raises(self, mock_settings):
         mock_settings.admin_token = None
+        mock_settings.media_signing_key = None
         from app.transport.security import generate_media_signature
         with pytest.raises(RuntimeError):
             generate_media_signature("abc", 12345)
@@ -211,6 +219,7 @@ class TestMediaSignature:
     @patch("app.transport.security.settings")
     def test_signed_url_format(self, mock_settings):
         mock_settings.admin_token = "test-admin-token-1234567890123456"
+        mock_settings.media_signing_key = None
         mock_settings.media_url_ttl_seconds = 3600
         from app.transport.security import generate_signed_media_url
         url = generate_signed_media_url("https://example.com", "photo-uuid")
