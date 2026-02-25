@@ -875,8 +875,8 @@ class RateLimitByKey:
 
 
 def _get_media_signing_key() -> str | None:
-    """Return the effective media signing key (EPIC G: dedicated key, fallback to admin_token)."""
-    return settings.media_signing_key or settings.admin_token
+    """Return the effective media signing key (EPIC G: dedicated key, fallback none)."""
+    return settings.media_signing_key
 
 
 def generate_media_signature(photo_id: str, expires: int) -> str:
@@ -893,7 +893,7 @@ def generate_media_signature(photo_id: str, expires: int) -> str:
     """
     key = _get_media_signing_key()
     if not key:
-        raise RuntimeError("ADMIN_TOKEN or MEDIA_SIGNING_KEY required for media URL signing")
+        raise RuntimeError("MEDIA_SIGNING_KEY required for media URL signing")
 
     signing_string = f"{photo_id}:{expires}"
     sig = hmac.new(
