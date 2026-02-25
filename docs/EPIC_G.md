@@ -341,3 +341,27 @@ EPIC G is fully implemented. Here's a summary:
 - `app/infra/notification_service.py` — `_get_media_for_lead()` with G4.2 threshold + `_MediaDelivery` dataclass
 
 **Test results:** 1307 passed, 0 failures (was 1267, +40 new)
+
+All 3 EPIC G video notification bugs fixed. Here's the summary:
+
+---
+
+### ✅ EPIC G Video Notification Fixes — 1338 tests passing
+
+**Bug 1: Videos not linked to leads** → `pg_uow_async.py`
+- **Root cause**: `finalize()` only linked `photos` table rows to the lead via `UPDATE photos SET lead_id = ...`. The `media_assets` table (where videos are stored) was never linked.
+- **Fix**: Added `UPDATE media_assets SET lead_id = $3 WHERE tenant_id=$1 AND chat_id=$2 AND lead_id IS NULL AND created_at > NOW() - INTERVAL '2 hours'` inside the same transaction.
+
+**Bug 2: Video links not sent in notification** → `notification_service.py`
+- **Root cause**: `notify_operator()` gated `_get_media_for_lead()` behind `if photo_count > 0:`. Video-only uploads had `photo_count=0` (effectively), so media was never fetched.
+- **Fix**: Removed the `photo_count > 0` guard — `_get_media_for_lead()` is now **always** called. Also moved media fetch **before** `format_lead_message()` so accurate counts are injected into the payload.
+
+**Bug 3: "Photo: 2" instead of "1 photo + 1 video"** → `notification_service.py`
+- **Root cause**: `format_lead_message()` showed `📷 Фото: {photo_count} шт.` for everything. The handler's `handle_media()` incremented `photo_count` for all media types.
+- **Fix**: 
+  - Enhanced `_MediaDelivery` with `photo_count` and `video_count` fields
+  - `_get_media_for_lead()` counts actual photos (from photos table) and videos (from media_assets) separately
+  - `notify_operator()` injects accurate counts into payload data
+  - `format_lead_message()` now shows `📷 Фото: 1 шт.  🎥 Видео: 1 шт.` when both exist
+
+**8 new tests** covering all three fixes.

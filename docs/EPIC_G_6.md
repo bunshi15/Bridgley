@@ -251,3 +251,58 @@ All done! Here's a summary of everything that was implemented:
 ### Test results
 - **693 tests in test_moving_bot.py** (up from 613)
 - **1267 total tests** — all passing
+
+All done! Here's a summary of what was implemented:
+
+### 1. **"Детская кровать" — separate item type `bed_children`**
+- Added `bed_children: [60, 100]` to the item catalog
+- Moved all children-bed aliases (`детская кровать`, `детская кроватка`, `kids bed`, `children bed`, etc.) from `bed_single` to `bed_children`
+- Added new aliases: `кроватка детская`, `baby bed`, `toddler bed`, `crib`, `עריסה`
+- Added label: `Детская кровать / Children's bed / מיטת ילדים`
+- NOT marked as heavy (children's bed is light)
+
+### 2. **Operator debug estimate message**
+- New config flag: `operator_estimate_debug: bool = False` in `app/config.py`
+- When enabled, appends a `🔍 Расчёт:` section to the operator notification showing:
+  - Base, floor surcharge, volume surcharge, items midpoint, extras, route fee
+  - Route minimum, distance factor, complexity score + triggers, guards applied
+- 4 new tests covering: enabled/disabled, complexity display, missing breakdown
+
+### 3. **Price reduction: -50₪ min, -80₪ max for items > 100₪**
+- 28 items affected (all with minimum > 100)
+- Updated all hardcoded test assertions across 20+ tests in `test_moving_bot.py`
+
+**Tests: 1311 passed, 0 failed** ✅
+
+All done! Here's the summary of everything completed:
+
+### ✅ All 7 Steps Complete — 1330 tests passing
+
+**What was done:**
+
+1. **Tiered price reductions** — All 49 items in `pricing_config.json` updated:
+   - min 100–200 → reduced by 30
+   - min 200–300 → reduced by 50
+   - min 300+ → reduced by 80
+   - `bed_children`: [60, 100] → [60, 70]
+
+2. **Volume/Routing/Guards (aggressive):**
+   - Volume: medium 80, large 200, xl 300
+   - Routing bands: metro 80, region 200, short 350, long 500, extreme 900
+   - Routing minimums: region 500, short 700, long 800, extreme 1200
+   - Guards: xl_volume_floor 400, national_move_minimum 600
+
+3. **Dimension sanitization** — `validators.py`:
+   - Added `_DIMENSION_PATTERN` regex matching "230x150x66 см" / "230х150х66 см" / "200×90×60"
+   - Added `_strip_dimensions()` helper
+   - Called at start of `extract_items()` before splitting — prevents "230x" being parsed as qty=230
+
+4. **19 new dimension sanitization tests** — regex unit tests, strip function tests, end-to-end extraction tests
+
+5. **All test assertions fixed** across `test_moving_bot.py` and `test_notification.py`
+
+All 1338 tests pass. 
+
+**Fix**: Removed the `[:8]` slice limit on `cargo_items` in `crew_view.py` line 155. The crew message was hardcoded to show only the first 8 item types — now it shows **all** recognized items. 
+
+For this lead with ~17 item types, the crew message will now show the full list: Холодильник, Шкаф, Диван, Ковёр, Обеденный стол ×3, Стул ×7, ТВ/монитор, Тумбочка ×2, Микроволновка, Кровать, Стиральная машина, Комод ×2, Обувница, Зеркало, Сумка/чемодан ×5, Коробка, etc.

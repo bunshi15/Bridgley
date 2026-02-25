@@ -362,6 +362,39 @@ def format_lead_message(chat_id: str, payload: dict[str, Any]) -> str:
     if estimate_str:
         lines.append(f"💰 Оценка: {estimate_str}")
 
+    # Operator debug: estimate breakdown (when enabled)
+    estimate_breakdown = custom.get("estimate_breakdown")
+    if settings.operator_estimate_debug and estimate_breakdown:
+        vol_cat = data.get("custom", {}).get("volume_category") or "—"
+        route_b = estimate_breakdown.get("route_band") or "нет"
+        complexity_score = estimate_breakdown.get("complexity_score", 0)
+        complexity_triggers = estimate_breakdown.get("complexity_triggers", [])
+        guards = estimate_breakdown.get("guards_applied", [])
+
+        debug_lines = [
+            "🔍 Расчёт:",
+            f"  База: {estimate_breakdown.get('base', 0)}",
+            f"  Этажи: {estimate_breakdown.get('floor_surcharge', 0)}",
+            f"  Объём ({vol_cat}): {estimate_breakdown.get('volume_surcharge', 0)}",
+            f"  Предметы: {estimate_breakdown.get('items_mid', 0)}",
+            f"  Допы: {estimate_breakdown.get('extras_adj', 0)}",
+            f"  Маршрут ({route_b}): {estimate_breakdown.get('route_fee', 0)}",
+            f"  Мин.маршрута: {estimate_breakdown.get('route_minimum', 0)}",
+            f"  Дист.фактор: {estimate_breakdown.get('distance_factor', 1.0)}",
+        ]
+        if complexity_score > 0:
+            debug_lines.append(
+                f"  Сложность: {complexity_score} ({', '.join(complexity_triggers)})"
+            )
+        else:
+            debug_lines.append("  Сложность: 0 (нет)")
+        if guards:
+            debug_lines.append(f"  Гарды: {', '.join(guards)}")
+        else:
+            debug_lines.append("  Гарды: нет")
+
+        lines.append("\n" + "\n".join(debug_lines))
+
     # Phase 8: Region classification
     region_info = custom.get("region_classifications", {})
     if region_info:
@@ -374,8 +407,14 @@ def format_lead_message(chat_id: str, payload: dict[str, Any]) -> str:
     if details:
         lines.append(f"Комментарий: {details}\n")
 
-    if photo_count > 0:
-        lines.append(f"📷 Фото: {photo_count} шт.\n")
+    video_count = data.get("video_count", 0)
+    if photo_count > 0 or video_count > 0:
+        media_parts = []
+        if photo_count > 0:
+            media_parts.append(f"📷 Фото: {photo_count} шт.")
+        if video_count > 0:
+            media_parts.append(f"🎥 Видео: {video_count} шт.")
+        lines.append("  ".join(media_parts) + "\n")
 
     # Original text block: when translation was used in main body,
     # show originals for reference (operator can compare if needed)
@@ -422,6 +461,8 @@ class _MediaDelivery:
     """Structured media delivery result for operator notifications (EPIC G4.2)."""
     inline_photo_urls: list[str]   # Photos sent as inline attachments
     link_lines: list[str]          # Text lines for link-only media (videos, overflow photos)
+    photo_count: int = 0           # Actual photo count (from photos table)
+    video_count: int = 0           # Actual video count (from media_assets)
 
 
 async def _get_media_for_lead(tenant_id: str, lead_id: str) -> _MediaDelivery:
@@ -489,14 +530,22 @@ async def _get_media_for_lead(tenant_id: str, lead_id: str) -> _MediaDelivery:
         logger.warning("Failed to get media assets for lead %s: %s", lead_id[:8], e)
         assets = []
 
+    video_count = 0
     for asset in assets:
         url = _signed_url(str(asset.id))
         kind_label = {"video": "🎥 Видео", "audio": "🎵 Аудио", "document": "📄 Документ"}.get(
             asset.kind, f"📎 {asset.kind.capitalize()}"
         )
         link_lines.append(f"  {kind_label}: {url}")
+        if asset.kind == "video":
+            video_count += 1
 
-    return _MediaDelivery(inline_photo_urls=inline_urls, link_lines=link_lines)
+    return _MediaDelivery(
+        inline_photo_urls=inline_urls,
+        link_lines=link_lines,
+        photo_count=len(photos),
+        video_count=video_count,
+    )
 
 
 async def _get_photo_urls_for_lead(tenant_id: str, lead_id: str) -> list[str]:
@@ -607,29 +656,34 @@ async def notify_operator(
         except Exception:
             logger.warning("Lead translation pipeline error", exc_info=True)
 
-        # Format message
-        message_body = format_lead_message(chat_id, payload)
-
         # EPIC G4.2: Get media with threshold optimization
+        # Always fetch — covers photos, videos, and other media assets
         data = payload.get("data", payload)
-        photo_count = data.get("photo_count", 0)
         photo_urls = []
         media_link_lines: list[str] = []
 
-        if photo_count > 0:
-            delivery = await _get_media_for_lead(resolved_tenant_id, lead_id)
-            photo_urls = delivery.inline_photo_urls
-            media_link_lines = delivery.link_lines
-            if photo_urls:
-                logger.info(
-                    "Attaching %d inline photos to operator notification (lead=%s)",
-                    len(photo_urls), lead_id[:8],
-                )
-            if media_link_lines:
-                logger.info(
-                    "Appending %d media links to operator message (lead=%s)",
-                    len(media_link_lines), lead_id[:8],
-                )
+        delivery = await _get_media_for_lead(resolved_tenant_id, lead_id)
+        photo_urls = delivery.inline_photo_urls
+        media_link_lines = delivery.link_lines
+
+        # Inject accurate photo/video counts into payload for format_lead_message
+        if delivery.photo_count > 0 or delivery.video_count > 0:
+            data["photo_count"] = delivery.photo_count
+            data["video_count"] = delivery.video_count
+
+        if photo_urls:
+            logger.info(
+                "Attaching %d inline photos to operator notification (lead=%s)",
+                len(photo_urls), lead_id[:8],
+            )
+        if media_link_lines:
+            logger.info(
+                "Appending %d media links to operator message (lead=%s)",
+                len(media_link_lines), lead_id[:8],
+            )
+
+        # Format message (uses corrected photo_count/video_count)
+        message_body = format_lead_message(chat_id, payload)
 
         # Append media link lines to message body
         if media_link_lines:

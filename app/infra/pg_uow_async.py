@@ -93,6 +93,27 @@ class AsyncPostgresLeadFinalizer(AsyncLeadFinalizer):
                     extra={"lead_id": lead_id, "photos_linked": linked_count}
                 )
 
+                # Link media_assets (videos, etc.) to this lead (EPIC G)
+                media_result = await conn.execute(
+                    """
+                    UPDATE media_assets
+                    SET lead_id = $3
+                    WHERE tenant_id = $1
+                      AND chat_id = $2
+                      AND lead_id IS NULL
+                      AND created_at > NOW() - INTERVAL '2 hours'
+                    """,
+                    tenant_id,
+                    chat_id,
+                    lead_id,
+                )
+                media_linked = int(media_result.split()[-1]) if media_result else 0
+                if media_linked > 0:
+                    logger.info(
+                        f"Lead finalize: linked {media_linked} media assets to lead {lead_id}",
+                        extra={"lead_id": lead_id, "media_assets_linked": media_linked}
+                    )
+
                 # Transaction auto-commits on exit from context manager
 
                 logger.info(f"Lead finalized: lead_id={lead_id}, chat={chat_id[:6]}***")

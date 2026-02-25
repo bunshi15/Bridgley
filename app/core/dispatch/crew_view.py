@@ -152,7 +152,7 @@ def format_crew_message(lead_id: str, payload: dict[str, Any]) -> str:
     items_str = ""
     if cargo_items:
         item_parts = []
-        for item in cargo_items[:8]:
+        for item in cargo_items:
             key = item.get("key", "")
             qty = item.get("qty", 1)
             label = ITEM_LABELS.get(key, {}).get(lang) or key.replace("_", " ").capitalize()

@@ -119,9 +119,13 @@ async def load_tenants() -> int:
                 return len(_cache)
 
             # Load all active bindings
+            # NOTE: only select columns actually used by the cache builder.
+            # provider_account_id is NOT selected — it may be absent in
+            # databases created before migration 006 added the column,
+            # and it is not needed for runtime lookups.
             binding_rows = await conn.fetch(
                 """
-                SELECT cb.tenant_id, cb.provider, cb.provider_account_id,
+                SELECT cb.tenant_id, cb.provider,
                        cb.credentials_enc, cb.config_json
                 FROM channel_bindings cb
                 JOIN tenants t ON t.id = cb.tenant_id

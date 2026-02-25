@@ -40,6 +40,7 @@ __all__ = [
     "_TZ", "_MAX_DAYS_AHEAD",
     "_LANDING_SIGNATURE", "_LANDING_FIELDS", "_VALID_MOVE_TYPES", "_FIELD_MAX",
     "_ROOM_PATTERNS", "_ROOM_COUNT_TO_VOLUME",
+    "_DIMENSION_PATTERN", "_strip_dimensions",
 ]
 
 
@@ -617,6 +618,29 @@ _ITEM_SEPARATORS = re.compile(
 )
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Dimension sanitization
+# ---------------------------------------------------------------------------
+# Composite dimension patterns like "230x150x66 см" or "230х150х66 см"
+# must be stripped BEFORE item extraction so that "230x" isn't mistaken
+# for quantity by _EXPLICIT_QTY_PATTERN.
+# Supports Latin 'x', Cyrillic 'х', and '×' as separators.
+_DIMENSION_PATTERN = re.compile(
+    r"\d+(?:[.,]\d+)?"                     # first number (int or decimal)
+    r"(?:\s*(?:см|cm|мм|mm|м|m)\s*)?"      # optional unit after first
+    r"\s*[xх×]\s*"                          # separator (Latin x / Cyrillic х / ×)
+    r"\d+(?:[.,]\d+)?"                      # second number
+    r"(?:\s*[xх×]\s*\d+(?:[.,]\d+)?)*"     # optional third+ dimensions
+    r"(?:\s*(?:см|cm|мм|mm|м|m))?",         # optional trailing unit
+    re.IGNORECASE,
+)
+
+
+def _strip_dimensions(text: str) -> str:
+    """Remove composite dimension patterns (e.g., '230x150x66 см') from text."""
+    return _DIMENSION_PATTERN.sub(" ", text).strip()
+
+
 # Quantity detection (EPIC D1 — attribute-safe)
 # ---------------------------------------------------------------------------
 #
@@ -686,6 +710,10 @@ def extract_items(
 
     if not text or not alias_lookup:
         return []
+
+    # Strip composite dimension patterns (e.g. "230x150x66 см") BEFORE
+    # splitting, so that "230x" is not mistaken for qty by _EXPLICIT_QTY_PATTERN.
+    text = _strip_dimensions(text)
 
     # Split into fragments by separators
     fragments = _ITEM_SEPARATORS.split(text.strip())

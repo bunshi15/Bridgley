@@ -165,6 +165,7 @@ class Settings(BaseSettings):
 
     # Estimate Display Control
     estimate_display_enabled: bool = True  # False = hide price from user & crew; operator still sees it
+    operator_estimate_debug: bool = False  # Show estimate breakdown in operator message
 
     # Feature Flags
     require_webhook_validation: bool = True

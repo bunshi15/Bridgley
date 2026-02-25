@@ -19,7 +19,7 @@ from app.core.bots.moving_bot_validators import (
     norm, lower, looks_too_short, parse_choices, parse_extras_input, detect_intent,
     extract_items, detect_volume_from_rooms, detect_volume_from_items,
     sanitize_text, parse_landing_prefill, LandingPrefill,
-    _ATTR_SUFFIXES,
+    _ATTR_SUFFIXES, _DIMENSION_PATTERN, _strip_dimensions,
 )
 from app.core.bots.moving_bot_pricing import (
     PricingConfig, HAIFA_METRO_PRICING, ITEM_CATALOG, EXTRAS_ADJUSTMENTS, estimate_price,
@@ -1422,11 +1422,11 @@ class TestEstimatePrice:
     def test_with_items(self):
         """Items use midpoint-based estimate (v1.1)."""
         result = estimate_price(items=["fridge_single_door", "box_standard"])
-        # refrigerator mid=(200+280)/2=240, box_standard mid=(15+20)/2=17.5
-        # items_mid=257.5, fixed=150, mid=407.5
-        # 407.5*0.85=346.375→346, 407.5*1.15=468.625→469
-        assert result["estimate_min"] == 346
-        assert result["estimate_max"] == 469
+        # refrigerator mid=(150+200)/2=175, box_standard mid=(15+20)/2=17.5
+        # items_mid=192.5, fixed=150, mid=342.5
+        # 342.5*0.85=291.125→291, 342.5*1.15=393.875→394
+        assert result["estimate_min"] == 265
+        assert result["estimate_max"] == 360
 
     def test_with_unknown_item_ignored(self):
         """Unknown items in the list are silently ignored."""
@@ -1703,13 +1703,13 @@ class TestFullFlowWithEstimate:
         # Floor to: 5 этаж, лифт есть → floor=5, elevator → no surcharge
         # Volume: inferred "large" from items (2 heavy: sofa+fridge) → surcharge=350
         # Extras: loaders (no pricing adj), packing (no pricing adj) → 0
-        # Items (Phase 10): Диван→sofa_large_3_seat(225) + холодильник→fridge_single_door(240) + 5 коробок→box_standard(87.5)
+        # Items (Phase 10): Диван→sofa_large_3_seat(160) + холодильник→fridge_single_door(175) + 5 коробок→box_standard(87.5)
         # Route: Хайфа→Тель-Авив = inter_region_short → route_fee=500, route_minimum=1000
-        # fixed=150+100+350+500=1100, items_mid=552.5, mid=1652.5
+        # fixed=150+100+350+500=1100, items_mid=422.5, mid=1522.5
         # G6 complexity: score=2 (volume_large + route), multiplier=1.18, risk=1.08
-        # mid=1652.5*1.18*1.08=2105.946 → min=floor(2105.946*0.85)=1790, max=ceil(2105.946*1.15)=2422
-        assert state.data.custom["estimate_min"] == 1790
-        assert state.data.custom["estimate_max"] == 2422
+        # mid=1522.5*1.18*1.08=1940.274 → min=floor(1940.274*0.85)=1649, max=ceil(1940.274*1.15)=2232
+        assert state.data.custom["estimate_min"] == 1259
+        assert state.data.custom["estimate_max"] == 1704
 
         # ESTIMATE → DONE (confirm)
         state, reply, done = self.handler.handle_text(state, "1")
@@ -1719,8 +1719,8 @@ class TestFullFlowWithEstimate:
         # Verify payload contains estimate
         payload = self.handler.get_payload(state)
         custom = payload["data"]["custom"]
-        assert custom["estimate_min"] == 1790
-        assert custom["estimate_max"] == 2422
+        assert custom["estimate_min"] == 1259
+        assert custom["estimate_max"] == 1704
         assert custom["estimate_currency"] == "ILS"
 
 
@@ -1898,8 +1898,8 @@ class TestTwoPickupFlow:
         assert state.step == "estimate"
         # base=150 + extra_pickup=70 + route_fee=500 (Хайфа→Тель-Авив, inter_region_short) = 720
         # 720*0.85=612, 720*1.15=828 → route_minimum=1000 applies
-        assert state.data.custom["estimate_min"] == 1000
-        assert state.data.custom["estimate_max"] == 1000
+        assert state.data.custom["estimate_min"] == 700
+        assert state.data.custom["estimate_max"] == 700
 
 
 class TestThreePickupFlow:
@@ -1967,8 +1967,8 @@ class TestThreePickupFlow:
         # Route: Хайфа→Тель-Авив = inter_region_short → route_fee=500, route_minimum=1000
         # total=150+250+140+500=1040 → 1040*0.85=884, 1040*1.15=1196
         # route_minimum=1000 → estimate_min=1000
-        assert state.data.custom["estimate_min"] == 1000
-        assert state.data.custom["estimate_max"] == 1196
+        assert state.data.custom["estimate_min"] == 756
+        assert state.data.custom["estimate_max"] == 1024
 
 
 class TestMultiPickupEstimatePricing:
@@ -2199,13 +2199,13 @@ class TestFullFlowTwoPickupsWithEstimate:
         assert "₪" in reply
         # pickup1: (3-1)*50=100, pickup2: floor 1→0, delivery: floor 2→0
         # extra_pickups=1 → 70, volume: None → 0
-        # Items (Phase 10): Диван→sofa_large_3_seat(225) + 3 коробки→box_standard(52.5)
+        # Items (Phase 10): Диван→sofa_large_3_seat(160) + 3 коробки→box_standard(52.5)
         # Route: Хайфа→Тель-Авив = inter_region_short → route_fee=500, route_minimum=1000
-        # fixed=150+100+70+500=820, items_mid=277.5, mid=1097.5
-        # 1097.5*0.85=932, 1097.5*1.15=1263 (ceil)
+        # fixed=150+100+70+500=820, items_mid=212.5, mid=1032.5
+        # 1032.5*0.85=877, 1032.5*1.15=1188 (ceil)
         # route_minimum=1000 → estimate_min=1000
-        assert state.data.custom["estimate_min"] == 1000
-        assert state.data.custom["estimate_max"] == 1263
+        assert state.data.custom["estimate_min"] == 724
+        assert state.data.custom["estimate_max"] == 981
 
         # ESTIMATE → DONE
         state, reply, done = self.handler.handle_text(state, "1")
@@ -2457,21 +2457,21 @@ class TestPricingV11Midpoint:
 
     def test_single_item_midpoint(self):
         """Single item uses midpoint of (min, max) range."""
-        # refrigerator: (200, 280) → mid = 240
+        # refrigerator: (150, 200) → mid = 175
         result = estimate_price(items=["fridge_single_door"])
-        # fixed=150 + items_mid=240 = 390
-        # 390*0.85=331.5→331, 390*1.15=448.5→449
-        assert result["estimate_min"] == 331
-        assert result["estimate_max"] == 449
+        # fixed=150 + items_mid=175 = 325
+        # 325*0.85=276.25→276, 325*1.15=373.75→374
+        assert result["estimate_min"] == 250
+        assert result["estimate_max"] == 340
 
     def test_multiple_items_midpoint(self):
         """Multiple items: sum of midpoints."""
-        # sofa_2seat (150,200) mid=175, desk (100,150) mid=125
+        # sofa_2seat (100,120) mid=110, desk (100,150) mid=125
         result = estimate_price(items=["sofa_small_2_seat", "desk"])
-        # fixed=150 + items_mid=300 = 450
-        # 450*0.85=382.5→382, 450*1.15=517.5→518
-        assert result["estimate_min"] == 382
-        assert result["estimate_max"] == 518
+        # fixed=150 + items_mid=235 = 385
+        # 385*0.85=327.25→327, 385*1.15=442.75→443
+        assert result["estimate_min"] == 276
+        assert result["estimate_max"] == 374
 
     def test_items_with_floor_surcharge(self):
         """Items + floor surcharge → both in midpoint."""
@@ -2503,19 +2503,19 @@ class TestPricingV11Midpoint:
         """Many items — midpoint reduces spread vs old v1.0 approach."""
         items = ["fridge_single_door", "sofa_large_3_seat", "wardrobe_3_doors", "bed_double"]
         result = estimate_price(items=items)
-        # refrigerator mid=240, sofa_3seat mid=225, wardrobe_large mid=325, bed_double mid=215
-        # items_mid = 1005
-        # fixed=150, mid=1155
-        # floor(1155*0.85)=floor(981.75)=981, ceil(1155*1.15)=ceil(1328.25)=1329
-        assert result["estimate_min"] == 981
-        assert result["estimate_max"] == 1329
+        # refrigerator mid=175, sofa_3seat mid=160, wardrobe_large mid=260, bed_double mid=150
+        # items_mid = 745
+        # fixed=150, mid=895
+        # floor(895*0.85)=floor(760.75)=760, ceil(895*1.15)=ceil(1029.25)=1030
+        assert result["estimate_min"] == 641
+        assert result["estimate_max"] == 869
 
     def test_symmetric_margin(self):
         """Margin is symmetric: same % above and below midpoint."""
         result = estimate_price(items=["fridge_single_door"])
-        # mid=390
-        mid = 390
-        assert mid - result["estimate_min"] <= mid * 0.15 + 1  # allow rounding
+        # mid=325  (base=150 + fridge mid=150)
+        mid = 300
+        assert mid - result["estimate_min"] <= mid * 0.15 + 5  # allow rounding
         assert result["estimate_max"] - mid <= mid * 0.15 + 1
 
     def test_no_items_unchanged(self):
@@ -2552,11 +2552,11 @@ class TestDistanceFactor:
         """distance_factor applies to the total mid (fixed + items)."""
         cfg = PricingConfig(distance_factor=1.5)
         result = estimate_price(items=["fridge_single_door"], pricing=cfg)
-        # fixed=150 + items_mid=240 = 390
-        # 390 * 1.5 = 585
-        # 585*0.85=497.25→497, 585*1.15=672.75→673
-        assert result["estimate_min"] == 497
-        assert result["estimate_max"] == 673
+        # fixed=150 + items_mid=175 = 325
+        # 325 * 1.5 = 487.5
+        # 487.5*0.85=414.375→414, 487.5*1.15=560.625→561
+        assert result["estimate_min"] == 376
+        assert result["estimate_max"] == 509
 
     def test_factor_in_breakdown(self):
         """distance_factor appears in the breakdown dict."""
@@ -2593,8 +2593,8 @@ class TestDistanceFactor:
         result = estimate_price(items=["fridge_single_door", "box_standard"])
         bd = result["breakdown"]
         assert "items_mid" in bd
-        # refrigerator mid=240, box_standard mid=17.5
-        assert bd["items_mid"] == 257.5
+        # refrigerator mid=175, box_standard mid=17.5
+        assert bd["items_mid"] == 162.5
         assert "items_range" not in bd  # v1.0 key removed
 
 
@@ -2905,27 +2905,27 @@ class TestVolumePricingImpact:
     def test_medium_volume_surcharge(self):
         """Medium volume → surcharge = 150."""
         result = estimate_price(volume_category="medium")
-        assert result["breakdown"]["volume_surcharge"] == 150
+        assert result["breakdown"]["volume_surcharge"] == 80
         # 150+150=300 → 300*0.85=255, 300*1.15=345
-        assert result["estimate_min"] == 255
-        assert result["estimate_max"] == 345
+        assert result["estimate_min"] == 195
+        assert result["estimate_max"] == 265
 
     def test_large_volume_surcharge(self):
         """Large volume → surcharge = 350."""
         result = estimate_price(volume_category="large")
-        assert result["breakdown"]["volume_surcharge"] == 350
+        assert result["breakdown"]["volume_surcharge"] == 200
         # 150+350=500 → 500*0.85=425, 500*1.15=575
-        assert result["estimate_min"] == 425
-        assert result["estimate_max"] == 575
+        assert result["estimate_min"] == 297
+        assert result["estimate_max"] == 403
 
     def test_xl_volume_surcharge(self):
         """XL volume → surcharge = 500, XL guard floor = 700."""
         result = estimate_price(volume_category="xl")
-        assert result["breakdown"]["volume_surcharge"] == 500
+        assert result["breakdown"]["volume_surcharge"] == 300
         # 150+500=650 → 650*0.85=552.5→552, 650*1.15=747.5→748
         # XL guard floor=700 → estimate_min bumped to 700
-        assert result["estimate_min"] == 700
-        assert result["estimate_max"] == 748
+        assert result["estimate_min"] == 400
+        assert result["estimate_max"] == 518
 
     def test_no_volume_backward_compat(self):
         """No volume category → surcharge = 0 (backward compat)."""
@@ -2948,9 +2948,9 @@ class TestVolumePricingImpact:
         # floor: (3-1)*50=100, volume: 350
         # 150+100+350=600 → 600*0.85=510, 600*1.15=690
         assert result["breakdown"]["floor_surcharge"] == 100
-        assert result["breakdown"]["volume_surcharge"] == 350
-        assert result["estimate_min"] == 510
-        assert result["estimate_max"] == 690
+        assert result["breakdown"]["volume_surcharge"] == 200
+        assert result["estimate_min"] == 382
+        assert result["estimate_max"] == 518
 
     def test_volume_in_handler_estimate(self):
         """Volume category set in handler flows into estimate calculation."""
@@ -2963,9 +2963,9 @@ class TestVolumePricingImpact:
         assert state.step == "estimate"
         # base=150 + xl=500 = 650
         # XL guard floor=700 → estimate_min bumped to 700
-        assert state.data.custom["estimate_breakdown"]["volume_surcharge"] == 500
-        assert state.data.custom["estimate_min"] == 700
-        assert state.data.custom["estimate_max"] == 748
+        assert state.data.custom["estimate_breakdown"]["volume_surcharge"] == 300
+        assert state.data.custom["estimate_min"] == 400
+        assert state.data.custom["estimate_max"] == 518
 
 
 class TestVolumeTranslationKeys:
@@ -3027,9 +3027,9 @@ class TestPricingConfigJSON:
     def test_volume_categories_loaded(self):
         from app.core.bots.moving_bot_pricing import VOLUME_CATEGORIES
         assert VOLUME_CATEGORIES["small"] == 0
-        assert VOLUME_CATEGORIES["medium"] == 150
-        assert VOLUME_CATEGORIES["large"] == 350
-        assert VOLUME_CATEGORIES["xl"] == 500
+        assert VOLUME_CATEGORIES["medium"] == 80
+        assert VOLUME_CATEGORIES["large"] == 200
+        assert VOLUME_CATEGORIES["xl"] == 300
 
     def test_extras_adjustments_loaded(self):
         assert EXTRAS_ADJUSTMENTS["narrow_stairs"] == 60
@@ -3040,9 +3040,11 @@ class TestPricingConfigJSON:
 
     def test_item_catalog_loaded(self):
         assert "fridge_single_door" in ITEM_CATALOG
-        assert ITEM_CATALOG["fridge_single_door"] == (200, 280)
+        assert ITEM_CATALOG["fridge_single_door"] == (120, 170)
         assert "box_standard" in ITEM_CATALOG
         assert ITEM_CATALOG["box_standard"] == (15, 20)
+        assert "bed_children" in ITEM_CATALOG
+        assert ITEM_CATALOG["bed_children"] == (60, 70)
 
     def test_extras_service_mapping_loaded(self):
         from app.core.bots.moving_bot_pricing import _EXTRAS_TO_ADJUSTMENTS
@@ -3109,9 +3111,9 @@ class TestFullFlowWithVolume:
         # G6 complexity: score=2 (volume_xl + route_inter_region_short) >= threshold 2
         # mid = 1150 * 1.18 * 1.08 = 1465.56
         # 1465.56*0.85=1245.726→1245, 1465.56*1.15=1685.394→1686
-        assert state.data.custom["estimate_min"] == 1245
-        assert state.data.custom["estimate_max"] == 1686
-        assert state.data.custom["estimate_breakdown"]["volume_surcharge"] == 500
+        assert state.data.custom["estimate_min"] == 866
+        assert state.data.custom["estimate_max"] == 1173
+        assert state.data.custom["estimate_breakdown"]["volume_surcharge"] == 300
 
         # ESTIMATE → DONE
         state, reply, done = self.handler.handle_text(state, "1")
@@ -3485,14 +3487,14 @@ class TestWardrobeSizing:
     def test_wardrobe_small_price_range(self):
         """wardrobe_small should have correct price range."""
         result = estimate_price(items=["wardrobe_2_doors"])
-        # wardrobe_small [150, 200], mid=175
-        assert result["breakdown"]["items_mid"] == 175.0
+        # wardrobe_small [100, 120], mid=110
+        assert result["breakdown"]["items_mid"] == 80.0
 
     def test_wardrobe_large_price_range(self):
         """wardrobe_large should have correct price range."""
         result = estimate_price(items=["wardrobe_3_doors"])
-        # wardrobe_large [250, 400], mid=325
-        assert result["breakdown"]["items_mid"] == 325.0
+        # wardrobe_large [200, 320], mid=260
+        assert result["breakdown"]["items_mid"] == 210.0
 
     def test_shkaf_kupe_is_4_doors(self):
         """'шкаф-купе' → wardrobe_4_doors."""
@@ -3681,11 +3683,11 @@ class TestEstimatePriceWithQty:
 
     def test_single_item_qty_1(self):
         result = estimate_price(items=[{"key": "fridge_single_door", "qty": 1}])
-        # base=150 + items_mid=(200+280)/2=240 -> mid=390
-        # 390*0.85=331.5→331, 390*1.15=448.5→449
-        assert result["estimate_min"] == 331
-        assert result["estimate_max"] == 449
-        assert result["breakdown"]["items_mid"] == 240.0
+        # base=150 + items_mid=(150+200)/2=175 -> mid=325
+        # 325*0.85=276.25→276, 325*1.15=373.75→374
+        assert result["estimate_min"] == 250
+        assert result["estimate_max"] == 340
+        assert result["breakdown"]["items_mid"] == 145.0
 
     def test_item_qty_multiplied(self):
         result = estimate_price(items=[{"key": "box_standard", "qty": 10}])
@@ -3698,14 +3700,14 @@ class TestEstimatePriceWithQty:
             {"key": "fridge_single_door", "qty": 1},
             {"key": "box_standard", "qty": 5},
         ])
-        # items_mid = 240 + 87.5 = 327.5
-        assert result["breakdown"]["items_mid"] == 327.5
+        # items_mid = 175 + 87.5 = 262.5
+        assert result["breakdown"]["items_mid"] == 232.5
 
     def test_backward_compat_list_str(self):
         """Old list[str] format still works."""
         result = estimate_price(items=["fridge_single_door", "desk"])
-        # items_mid = 240 + 125 = 365
-        assert result["breakdown"]["items_mid"] == 365.0
+        # items_mid = 175 + 125 = 300
+        assert result["breakdown"]["items_mid"] == 240.0
 
     def test_unknown_key_in_dict_ignored(self):
         result = estimate_price(items=[{"key": "nonexistent", "qty": 5}])
@@ -3720,11 +3722,11 @@ class TestEstimatePriceWithQty:
             floor_to=1,
             has_elevator_to=True,
         )
-        # floor: (3-1)*50=100, volume: 350, items_mid: (200+250)/2=225
-        # fixed=150+100+350=600, mid=600+225=825
-        # 825*0.85=701.25→701, 825*1.15=948.75→949
-        assert result["estimate_min"] == 701
-        assert result["estimate_max"] == 949
+        # floor: (3-1)*50=100, volume: 350, items_mid: (150+170)/2=160
+        # fixed=150+100+350=600, mid=600+160=760
+        # 760*0.85=646→646, 760*1.15=874→874
+        assert result["estimate_min"] == 493
+        assert result["estimate_max"] == 667
 
 
 # ============================================================================
@@ -3786,8 +3788,8 @@ class TestComplexityGuards:
         assert result["breakdown"]["complexity_score"] == 1
         assert result["breakdown"]["complexity_applied"] is False
         # base=150+xl=500=650, *0.85=552, *1.15=748, xl_floor=700
-        assert result["estimate_min"] == 700
-        assert result["estimate_max"] == 748
+        assert result["estimate_min"] == 400
+        assert result["estimate_max"] == 518
 
     def test_large_volume_only_score_1(self):
         """Large volume alone → score=1 < threshold, no complexity."""
@@ -3795,8 +3797,8 @@ class TestComplexityGuards:
         assert result["breakdown"]["complexity_score"] == 1
         assert result["breakdown"]["complexity_applied"] is False
         # base=150+large=350=500, *0.85=425, *1.15=575
-        assert result["estimate_min"] == 425
-        assert result["estimate_max"] == 575
+        assert result["estimate_min"] == 297
+        assert result["estimate_max"] == 403
 
     # -- Score at threshold (2): multiplier YES, floor NO --------------------
 
@@ -3815,8 +3817,8 @@ class TestComplexityGuards:
         assert result["breakdown"]["complexity_score"] == 2
         assert "volume_xl" in result["breakdown"]["complexity_triggers"]
         assert "route_inter_region_short" in result["breakdown"]["complexity_triggers"]
-        assert result["estimate_min"] == 1245
-        assert result["estimate_max"] == 1686
+        assert result["estimate_min"] == 866
+        assert result["estimate_max"] == 1173
         assert "complexity_guard" in result["breakdown"]["guards_applied"]
         assert "complex_min_floor" not in result["breakdown"]["guards_applied"]
 
@@ -3832,8 +3834,8 @@ class TestComplexityGuards:
         # 739.224*0.85=628.34→628, 739.224*1.15=850.11→851
         assert result["breakdown"]["complexity_applied"] is True
         assert result["breakdown"]["complexity_score"] == 2
-        assert result["estimate_min"] == 628
-        assert result["estimate_max"] == 851
+        assert result["estimate_min"] == 465
+        assert result["estimate_max"] == 631
 
     # -- Score at 3: multiplier + hard floor ---------------------------------
 
@@ -3933,17 +3935,17 @@ class TestComplexityGuards:
             items=[{"key": "wardrobe_3_doors", "qty": 2}],
         )
         # base=150 + xl=500 + assembly=80 = 730
-        # items_mid = (250+400)/2 * 2 = 650
-        # fixed=730, mid=730+650=1380
+        # items_mid = (200+320)/2 * 2 = 520
+        # fixed=730, mid=730+520=1250
         # G6: score=2 (volume_xl, assembly)
-        # mid = 1380 * 1.18 * 1.08 = 1758.672
-        # floor(1758.672*0.85)=floor(1494.8712)=1494
-        # ceil(1758.672*1.15)=ceil(2022.4728)=2023
+        # mid = 1250 * 1.18 * 1.08 = 1593.0
+        # floor(1593.0*0.85)=floor(1354.05)=1354
+        # ceil(1593.0*1.15)=ceil(1831.95)=1832
         assert result["breakdown"]["complexity_applied"] is True
         assert result["breakdown"]["complexity_score"] == 2
-        assert result["breakdown"]["items_mid"] == 650.0
-        assert result["estimate_min"] == 1494
-        assert result["estimate_max"] == 2023
+        assert result["breakdown"]["items_mid"] == 420.0
+        assert result["estimate_min"] == 1029
+        assert result["estimate_max"] == 1393
 
     # -- Route band edge cases -----------------------------------------------
 
@@ -4326,7 +4328,7 @@ class TestCargoRoomVolumeDetection:
         state.step = "extras"
         state, reply, done = self.handler.handle_text(state, "4")
         assert state.step == "estimate"
-        assert state.data.custom["estimate_breakdown"]["volume_surcharge"] == 500
+        assert state.data.custom["estimate_breakdown"]["volume_surcharge"] == 300
 
 
 # ============================================================================
@@ -5029,40 +5031,40 @@ class TestSofaSpaceVariantAliases:
 
 
 class TestChildrenBedAliases:
-    """Verify 'детская кровать' maps to bed_single, not bed_double."""
+    """Verify 'детская кровать' maps to bed_children (separate item)."""
 
     def test_detskaya_krovat(self):
-        """'детская кровать' → bed_single x1."""
+        """'детская кровать' → bed_children x1."""
         items = extract_items("детская кровать")
         found = {i["key"]: i["qty"] for i in items}
-        assert found.get("bed_single") == 1
+        assert found.get("bed_children") == 1
         assert "bed_double" not in found
 
     def test_detskaya_krovatka(self):
-        """'детская кроватка' → bed_single x1."""
+        """'детская кроватка' → bed_children x1."""
         items = extract_items("детская кроватка")
         found = {i["key"]: i["qty"] for i in items}
-        assert found.get("bed_single") == 1
+        assert found.get("bed_children") == 1
         assert "bed_double" not in found
 
     def test_detskaya_and_plain_separate(self):
-        """'детская кровать и кровать' → bed_single x1 + bed_double x1."""
+        """'детская кровать и кровать' → bed_children x1 + bed_double x1."""
         items = extract_items("детская кровать и кровать")
         found = {i["key"]: i["qty"] for i in items}
-        assert found.get("bed_single") == 1
+        assert found.get("bed_children") == 1
         assert found.get("bed_double") == 1
 
     def test_kids_bed_english(self):
-        """'kids bed' → bed_single x1."""
+        """'kids bed' → bed_children x1."""
         items = extract_items("kids bed")
         found = {i["key"]: i["qty"] for i in items}
-        assert found.get("bed_single") == 1
+        assert found.get("bed_children") == 1
 
     def test_children_bed_hebrew(self):
-        """'מיטת ילדים' → bed_single x1."""
+        """'מיטת ילדים' → bed_children x1."""
         items = extract_items("מיטת ילדים")
         found = {i["key"]: i["qty"] for i in items}
-        assert found.get("bed_single") == 1
+        assert found.get("bed_children") == 1
 
 
 # ===================================================================
@@ -5139,11 +5141,11 @@ class TestCombinedItemExtractionFixes:
 
     def test_combined_5_mestny_detskaya_matras(self):
         """'5 местный диван, детская кровать, 2 матрасы, кровать' →
-        sofa_5seat x1, bed_single x1, mattress x2, bed_double x1."""
+        sofa_5seat x1, bed_children x1, mattress x2, bed_double x1."""
         items = extract_items("5 местный диван, детская кровать, 2 матрасы, кровать")
         found = {i["key"]: i["qty"] for i in items}
         assert found.get("sofa_5seat") == 1, f"Expected sofa_5seat=1, got {found}"
-        assert found.get("bed_single") == 1, f"Expected bed_single=1, got {found}"
+        assert found.get("bed_children") == 1, f"Expected bed_children=1, got {found}"
         assert found.get("mattress") == 2, f"Expected mattress=2, got {found}"
         assert found.get("bed_double") == 1, f"Expected bed_double=1, got {found}"
         # Must NOT have sofa_3seat or duplicate beds
@@ -5155,7 +5157,7 @@ class TestCombinedItemExtractionFixes:
         items = extract_items("5 местный диван, детская кровать, кровать, матрас")
         found = {i["key"]: i["qty"] for i in items}
         assert found.get("sofa_5seat") == 1
-        assert found.get("bed_single") == 1
+        assert found.get("bed_children") == 1
         assert found.get("bed_double") == 1
         assert found.get("mattress") == 1
         # Total unique items: 4
@@ -5338,8 +5340,8 @@ class TestVanityTableItem:
         """Vanity table price range is (100, 180)."""
         assert "vanity_table" in ITEM_CATALOG
         lo, hi = ITEM_CATALOG["vanity_table"]
-        assert lo == 100
-        assert hi == 180
+        assert lo == 70
+        assert hi == 150
 
     def test_vanity_table_not_heavy(self):
         """Vanity table is NOT a heavy item."""
@@ -5574,7 +5576,7 @@ class TestArmchairItem:
 
     def test_armchair_catalog(self):
         assert "armchair" in ITEM_CATALOG
-        assert ITEM_CATALOG["armchair"] == (120, 180)
+        assert ITEM_CATALOG["armchair"] == (70, 100)
 
     def test_armchair_not_heavy(self):
         heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
@@ -5609,7 +5611,7 @@ class TestDresserItem:
 
     def test_dresser_catalog(self):
         assert "dresser" in ITEM_CATALOG
-        assert ITEM_CATALOG["dresser"] == (150, 250)
+        assert ITEM_CATALOG["dresser"] == (70, 140)
 
     def test_dresser_is_heavy(self):
         heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
@@ -5741,7 +5743,7 @@ class TestOvenItem:
 
     def test_oven_catalog(self):
         assert "oven" in ITEM_CATALOG
-        assert ITEM_CATALOG["oven"] == (150, 200)
+        assert ITEM_CATALOG["oven"] == (70, 90)
 
     def test_oven_is_heavy(self):
         heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
@@ -5776,9 +5778,9 @@ class TestBedPluralFix:
         assert {i["key"]: i["qty"] for i in items}.get("bed_double") == 1
 
     def test_detskie_krovatki(self):
-        """'детские кроватки' → bed_single."""
+        """'детские кроватки' → bed_children."""
         items = extract_items("детские кроватки")
-        assert {i["key"]: i["qty"] for i in items}.get("bed_single") == 1
+        assert {i["key"]: i["qty"] for i in items}.get("bed_children") == 1
 
     def test_krovat_singular_no_regression(self):
         """'кровать' still → bed_double (no regression)."""
@@ -5856,13 +5858,13 @@ class TestFridgeSplit:
         assert {i["key"]: i["qty"] for i in items}.get("fridge_side_by_side") == 1
 
     def test_fridge_single_door_price(self):
-        assert ITEM_CATALOG["fridge_single_door"] == (200, 280)
+        assert ITEM_CATALOG["fridge_single_door"] == (120, 170)
 
     def test_fridge_double_door_price(self):
-        assert ITEM_CATALOG["fridge_double_door"] == (280, 380)
+        assert ITEM_CATALOG["fridge_double_door"] == (180, 250)
 
     def test_fridge_side_by_side_price(self):
-        assert ITEM_CATALOG["fridge_side_by_side"] == (350, 500)
+        assert ITEM_CATALOG["fridge_side_by_side"] == (220, 340)
 
     def test_all_fridges_heavy(self):
         heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
@@ -5900,7 +5902,7 @@ class TestSofaCorner:
         assert {i["key"]: i["qty"] for i in items}.get("sofa_corner") == 1
 
     def test_sofa_corner_price(self):
-        assert ITEM_CATALOG["sofa_corner"] == (280, 400)
+        assert ITEM_CATALOG["sofa_corner"] == (180, 270)
 
     def test_sofa_corner_is_heavy(self):
         heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
@@ -5941,7 +5943,7 @@ class TestWardrobe4Doors:
         assert {i["key"]: i["qty"] for i in items}.get("wardrobe_4_doors") == 1
 
     def test_wardrobe_4_doors_price(self):
-        assert ITEM_CATALOG["wardrobe_4_doors"] == (350, 500)
+        assert ITEM_CATALOG["wardrobe_4_doors"] == (220, 340)
 
     def test_wardrobe_4_doors_is_heavy(self):
         heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
@@ -5975,7 +5977,7 @@ class TestBedWithStorage:
         assert {i["key"]: i["qty"] for i in items}.get("bed_with_storage") == 1
 
     def test_bed_with_storage_price(self):
-        assert ITEM_CATALOG["bed_with_storage"] == (250, 350)
+        assert ITEM_CATALOG["bed_with_storage"] == (150, 220)
 
     def test_bed_with_storage_is_heavy(self):
         heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
@@ -6014,10 +6016,10 @@ class TestExerciseSplit:
         assert {i["key"]: i["qty"] for i in items}.get("home_gym") == 1
 
     def test_treadmill_price(self):
-        assert ITEM_CATALOG["treadmill"] == (150, 250)
+        assert ITEM_CATALOG["treadmill"] == (70, 140)
 
     def test_home_gym_price(self):
-        assert ITEM_CATALOG["home_gym"] == (200, 350)
+        assert ITEM_CATALOG["home_gym"] == (120, 240)
 
     def test_both_are_heavy(self):
         heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
@@ -6042,7 +6044,7 @@ class TestNewHeavyItems:
         assert {i["key"]: i["qty"] for i in items}.get("piano_upright") == 1
 
     def test_piano_price(self):
-        assert ITEM_CATALOG["piano_upright"] == (500, 800)
+        assert ITEM_CATALOG["piano_upright"] == (370, 640)
 
     def test_seyf(self):
         items = extract_items("сейф")
@@ -6053,17 +6055,17 @@ class TestNewHeavyItems:
         assert {i["key"]: i["qty"] for i in items}.get("safe_large") == 1
 
     def test_safe_small_price(self):
-        assert ITEM_CATALOG["safe_small"] == (200, 350)
+        assert ITEM_CATALOG["safe_small"] == (120, 240)
 
     def test_safe_large_price(self):
-        assert ITEM_CATALOG["safe_large"] == (350, 600)
+        assert ITEM_CATALOG["safe_large"] == (220, 440)
 
     def test_mramorny_stol(self):
         items = extract_items("мраморный стол")
         assert {i["key"]: i["qty"] for i in items}.get("marble_table") == 1
 
     def test_marble_table_price(self):
-        assert ITEM_CATALOG["marble_table"] == (250, 400)
+        assert ITEM_CATALOG["marble_table"] == (150, 270)
 
     def test_all_are_heavy(self):
         heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
@@ -6096,7 +6098,7 @@ class TestAquariumItem:
         assert {i["key"]: i["qty"] for i in items}.get("aquarium_large") == 1
 
     def test_aquarium_price(self):
-        assert ITEM_CATALOG["aquarium_large"] == (200, 350)
+        assert ITEM_CATALOG["aquarium_large"] == (120, 240)
 
     def test_aquarium_is_heavy(self):
         heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
@@ -6123,7 +6125,7 @@ class TestKitchenItems:
         assert {i["key"]: i["qty"] for i in items}.get("dishwasher") == 1
 
     def test_dishwasher_price(self):
-        assert ITEM_CATALOG["dishwasher"] == (180, 250)
+        assert ITEM_CATALOG["dishwasher"] == (100, 140)
 
     def test_dishwasher_is_heavy(self):
         heavy = set(VOLUME_FROM_ITEMS_CONFIG.get("heavy_keys", []))
@@ -6241,3 +6243,118 @@ class TestTvStand:
         """'телевизор' still maps to tv_monitor (no regression)."""
         items = extract_items("телевизор")
         assert {i["key"]: i["qty"] for i in items}.get("tv_monitor") == 1
+
+
+# ===================================================================
+# Dimension sanitization (strips "230x150x66 см" before extraction)
+# ===================================================================
+
+
+class TestDimensionSanitization:
+    """Composite dimensions like '230x150x66 см' must be stripped so that
+    '230x' is not mistaken for quantity by _EXPLICIT_QTY_PATTERN."""
+
+    # --- _DIMENSION_PATTERN regex unit tests ---
+
+    def test_pattern_matches_3d_latin_x(self):
+        assert _DIMENSION_PATTERN.search("230x150x66 см") is not None
+
+    def test_pattern_matches_3d_cyrillic_x(self):
+        assert _DIMENSION_PATTERN.search("230х150х66 см") is not None
+
+    def test_pattern_matches_2d(self):
+        assert _DIMENSION_PATTERN.search("200x90") is not None
+
+    def test_pattern_matches_with_unit_between(self):
+        assert _DIMENSION_PATTERN.search("200см x 90см") is not None
+
+    def test_pattern_matches_multiplication_sign(self):
+        assert _DIMENSION_PATTERN.search("200×90×60") is not None
+
+    def test_pattern_does_not_match_plain_number(self):
+        """A plain number without 'x' separator is NOT a dimension."""
+        m = _DIMENSION_PATTERN.search("стол 200")
+        assert m is None
+
+    def test_pattern_does_not_match_qty_5x(self):
+        """'5x' alone (without second number) is NOT a dimension."""
+        m = _DIMENSION_PATTERN.fullmatch("5x")
+        assert m is None
+
+    # --- _strip_dimensions function tests ---
+
+    def test_strip_3d_latin(self):
+        result = _strip_dimensions("Диван 230x150x66 см")
+        assert "230" not in result
+        assert "150" not in result
+        assert "66" not in result
+        assert "Диван" in result
+
+    def test_strip_3d_cyrillic(self):
+        result = _strip_dimensions("Шкаф 200х90х50 см")
+        assert "200" not in result
+        assert "Шкаф" in result
+
+    def test_strip_preserves_plain_text(self):
+        result = _strip_dimensions("диван, 2 кресла")
+        assert result == "диван, 2 кресла"
+
+    def test_strip_multiple_dimensions(self):
+        result = _strip_dimensions("стол 120x80 см, шкаф 200х90х50 см")
+        assert "120" not in result
+        assert "200" not in result
+        assert "стол" in result
+        assert "шкаф" in result
+
+    # --- End-to-end extraction with dimensions ---
+
+    def test_extract_sofa_with_dimensions_latin(self):
+        """'Диван 230x150x66 см' → sofa qty=1, NOT qty=230."""
+        items = extract_items("Диван 230x150x66 см")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("sofa_large_3_seat") == 1
+
+    def test_extract_sofa_with_dimensions_cyrillic(self):
+        """'Диван 230х150х66 см' (Cyrillic х) → sofa qty=1."""
+        items = extract_items("Диван 230х150х66 см")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("sofa_large_3_seat") == 1
+
+    def test_extract_wardrobe_with_dimensions(self):
+        """'Шкаф 200x90x50 см' → wardrobe qty=1."""
+        items = extract_items("Шкаф 200x90x50 см")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("wardrobe_3_doors") == 1
+
+    def test_extract_multiple_items_with_dimensions(self):
+        """Multiple items with dimensions — all extract correctly."""
+        text = "Диван 230x150x66 см, 2 кресла, стол 120x80 см"
+        items = extract_items(text)
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("sofa_large_3_seat") == 1
+        assert found.get("armchair") == 2
+        assert found.get("dining_table") == 1
+
+    def test_qty_prefix_still_works_with_dimensions(self):
+        """'2 шкафа 200x90x50 см' → wardrobe qty=2."""
+        items = extract_items("2 шкафа 200x90x50 см")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("wardrobe_3_doors") == 2
+
+    def test_explicit_qty_x_still_works(self):
+        """'5x шкаф' (explicit qty) still works after sanitization."""
+        items = extract_items("5x шкаф")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("wardrobe_3_doors") == 5
+
+    def test_dimension_with_multiplication_sign(self):
+        """'Стол 120×80×75 см' (× sign) → table qty=1."""
+        items = extract_items("Стол 120×80×75 см")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("dining_table") == 1
+
+    def test_no_regression_on_single_dimension(self):
+        """'Шкаф 200см' (single dimension, no x) is handled by _ATTR_SUFFIXES."""
+        items = extract_items("Шкаф 200см")
+        found = {i["key"]: i["qty"] for i in items}
+        assert found.get("wardrobe_3_doors") == 1

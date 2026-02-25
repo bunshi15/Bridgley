@@ -249,6 +249,128 @@ class TestFormatLeadMessage:
         result = format_lead_message("+79990001122", payload)
         assert "Оценка" not in result
 
+    def test_debug_estimate_enabled(self):
+        """When operator_estimate_debug=True and breakdown exists, append debug section."""
+        from app.infra.notification_service import format_lead_message
+        from unittest.mock import patch, MagicMock
+        mock_settings = MagicMock()
+        mock_settings.operator_estimate_debug = True
+        payload = {
+            "cargo_description": "Шкаф",
+            "custom": {
+                "estimate_min": 200,
+                "estimate_max": 300,
+                "volume_category": "medium",
+                "estimate_breakdown": {
+                    "base": 150,
+                    "floor_surcharge": 100,
+                    "volume_surcharge": 150,
+                    "items_mid": 50.0,
+                    "extras_adj": 0,
+                    "route_fee": 0,
+                    "route_band": None,
+                    "route_minimum": 0,
+                    "distance_factor": 1.0,
+                    "complexity_score": 0,
+                    "complexity_triggers": [],
+                    "guards_applied": [],
+                },
+            },
+        }
+        with patch("app.infra.notification_service.settings", mock_settings):
+            result = format_lead_message("+79990001122", payload)
+        assert "🔍 Расчёт:" in result
+        assert "База: 150" in result
+        assert "Этажи: 100" in result
+        assert "Объём (medium): 150" in result
+        assert "Предметы: 50.0" in result
+        assert "Дист.фактор: 1.0" in result
+        assert "Сложность: 0 (нет)" in result
+        assert "Гарды: нет" in result
+
+    def test_debug_estimate_disabled(self):
+        """When operator_estimate_debug=False, no debug section even with breakdown."""
+        from app.infra.notification_service import format_lead_message
+        from unittest.mock import patch, MagicMock
+        mock_settings = MagicMock()
+        mock_settings.operator_estimate_debug = False
+        payload = {
+            "cargo_description": "Шкаф",
+            "custom": {
+                "estimate_min": 200,
+                "estimate_max": 300,
+                "estimate_breakdown": {
+                    "base": 150,
+                    "floor_surcharge": 0,
+                    "volume_surcharge": 0,
+                    "items_mid": 0,
+                    "extras_adj": 0,
+                    "route_fee": 0,
+                    "route_band": None,
+                    "route_minimum": 0,
+                    "distance_factor": 1.0,
+                    "complexity_score": 0,
+                    "complexity_triggers": [],
+                    "guards_applied": [],
+                },
+            },
+        }
+        with patch("app.infra.notification_service.settings", mock_settings):
+            result = format_lead_message("+79990001122", payload)
+        assert "Расчёт" not in result
+        assert "200" in result  # Still shows the estimate itself
+
+    def test_debug_estimate_with_complexity(self):
+        """When complexity is active, debug shows triggers and guards."""
+        from app.infra.notification_service import format_lead_message
+        from unittest.mock import patch, MagicMock
+        mock_settings = MagicMock()
+        mock_settings.operator_estimate_debug = True
+        payload = {
+            "cargo_description": "Диван",
+            "custom": {
+                "estimate_min": 1500,
+                "estimate_max": 2000,
+                "volume_category": "xl",
+                "estimate_breakdown": {
+                    "base": 150,
+                    "floor_surcharge": 200,
+                    "volume_surcharge": 500,
+                    "items_mid": 300.0,
+                    "extras_adj": 80,
+                    "route_fee": 500,
+                    "route_band": "inter_region_short",
+                    "route_minimum": 1000,
+                    "distance_factor": 1.0,
+                    "complexity_score": 3,
+                    "complexity_triggers": ["volume_xl", "route", "high_floor_no_elevator"],
+                    "guards_applied": ["national_move_minimum"],
+                },
+            },
+        }
+        with patch("app.infra.notification_service.settings", mock_settings):
+            result = format_lead_message("+79990001122", payload)
+        assert "Сложность: 3 (volume_xl, route, high_floor_no_elevator)" in result
+        assert "Гарды: national_move_minimum" in result
+        assert "Маршрут (inter_region_short): 500" in result
+
+    def test_debug_estimate_no_breakdown_in_custom(self):
+        """If estimate_breakdown is missing, no debug section even when enabled."""
+        from app.infra.notification_service import format_lead_message
+        from unittest.mock import patch, MagicMock
+        mock_settings = MagicMock()
+        mock_settings.operator_estimate_debug = True
+        payload = {
+            "cargo_description": "Шкаф",
+            "custom": {
+                "estimate_min": 200,
+                "estimate_max": 300,
+            },
+        }
+        with patch("app.infra.notification_service.settings", mock_settings):
+            result = format_lead_message("+79990001122", payload)
+        assert "Расчёт" not in result
+
 
 # ============================================================================
 # _mask_phone
@@ -318,14 +440,17 @@ class TestNotifyOperatorTenantAware:
         mock_channel.name = "whatsapp"
         mock_channel.send = AsyncMock(return_value=True)
 
+        from app.infra.notification_service import _MediaDelivery
+        empty_delivery = _MediaDelivery(inline_photo_urls=[], link_lines=[])
+
         with patch(
             "app.infra.notification_channels.get_notification_channel",
             return_value=mock_channel,
         ) as mock_get_ch:
             with patch(
-                "app.infra.notification_service._get_photo_urls_for_lead",
+                "app.infra.notification_service._get_media_for_lead",
                 new_callable=AsyncMock,
-                return_value=[],
+                return_value=empty_delivery,
             ):
                 result = await notify_operator(
                     "lead1", "+79990001122",
@@ -379,14 +504,17 @@ class TestNotifyOperatorTenantAware:
         mock_channel.name = "whatsapp"
         mock_channel.send = AsyncMock(return_value=True)
 
+        from app.infra.notification_service import _MediaDelivery
+        empty_delivery = _MediaDelivery(inline_photo_urls=[], link_lines=[])
+
         with patch(
             "app.infra.notification_channels.get_notification_channel",
             return_value=mock_channel,
         ) as mock_get_ch:
             with patch(
-                "app.infra.notification_service._get_photo_urls_for_lead",
+                "app.infra.notification_service._get_media_for_lead",
                 new_callable=AsyncMock,
-                return_value=[],
+                return_value=empty_delivery,
             ):
                 result = await notify_operator(
                     "lead1", "+79990001122",
@@ -1317,8 +1445,16 @@ class TestTwilioTemplateFallback:
             }
         }
 
+        from app.infra.notification_service import _MediaDelivery
+        empty_delivery = _MediaDelivery(inline_photo_urls=[], link_lines=[])
+
         with patch("app.infra.notification_channels.get_notification_channel", return_value=mock_channel):
-            result = await notify_operator("lead123", "whatsapp:+972507777777", payload, tenant_id="test_t")
+            with patch(
+                "app.infra.notification_service._get_media_for_lead",
+                new_callable=AsyncMock,
+                return_value=empty_delivery,
+            ):
+                result = await notify_operator("lead123", "whatsapp:+972507777777", payload, tenant_id="test_t")
 
         assert result is True
         tv = captured_notification["metadata"]["template_vars"]
@@ -1327,3 +1463,165 @@ class TestTwilioTemplateFallback:
         assert tv["addr_from"] == "Хайфа, Герцль 10"
         assert tv["addr_to"] == "Тель-Авив, Дизенгоф 50"
         assert tv["estimate"] == "300–400 ₪"
+
+
+# ============================================================================
+# EPIC G: Video notification fixes
+# ============================================================================
+
+class TestVideoNotificationDisplay:
+    """format_lead_message() must distinguish photos from videos."""
+
+    def test_photo_only_display(self):
+        from app.infra.notification_service import format_lead_message
+        payload = {"photo_count": 3}
+        result = format_lead_message("+79990001122", payload)
+        assert "📷 Фото: 3 шт." in result
+        assert "Видео" not in result
+
+    def test_video_only_display(self):
+        from app.infra.notification_service import format_lead_message
+        payload = {"photo_count": 0, "video_count": 2}
+        result = format_lead_message("+79990001122", payload)
+        assert "🎥 Видео: 2 шт." in result
+        assert "📷 Фото" not in result
+
+    def test_photo_and_video_display(self):
+        from app.infra.notification_service import format_lead_message
+        payload = {"photo_count": 1, "video_count": 1}
+        result = format_lead_message("+79990001122", payload)
+        assert "📷 Фото: 1 шт." in result
+        assert "🎥 Видео: 1 шт." in result
+
+    def test_no_media_no_line(self):
+        from app.infra.notification_service import format_lead_message
+        payload = {"photo_count": 0}
+        result = format_lead_message("+79990001122", payload)
+        assert "Фото" not in result
+        assert "Видео" not in result
+
+
+class TestMediaDeliveryAccurateCounts:
+    """_MediaDelivery carries accurate photo_count and video_count."""
+
+    def test_delivery_default_counts(self):
+        from app.infra.notification_service import _MediaDelivery
+        d = _MediaDelivery(inline_photo_urls=[], link_lines=[])
+        assert d.photo_count == 0
+        assert d.video_count == 0
+
+    def test_delivery_with_counts(self):
+        from app.infra.notification_service import _MediaDelivery
+        d = _MediaDelivery(
+            inline_photo_urls=["url1"],
+            link_lines=["  🎥 Видео: url2"],
+            photo_count=1,
+            video_count=1,
+        )
+        assert d.photo_count == 1
+        assert d.video_count == 1
+
+
+class TestNotifyOperatorAlwaysFetchesMedia:
+    """notify_operator() must always call _get_media_for_lead, not gate on photo_count."""
+
+    @pytest.mark.asyncio
+    async def test_video_only_media_fetched(self, monkeypatch):
+        """Even with photo_count=0, _get_media_for_lead is called and video links appear."""
+        from app.infra.notification_service import notify_operator, _MediaDelivery
+
+        monkeypatch.setattr("app.config.settings.operator_notifications_enabled", True)
+        monkeypatch.setattr("app.config.settings.operator_notification_channel", "whatsapp")
+        monkeypatch.setattr("app.config.settings.operator_whatsapp", "+79990001122")
+        monkeypatch.setattr("app.config.settings.tenant_id", "test_t")
+
+        captured_body = {}
+
+        async def mock_send(notification):
+            captured_body["body"] = notification.body
+            return True
+
+        mock_channel = MagicMock()
+        mock_channel.name = "whatsapp"
+        mock_channel.send = mock_send
+
+        # Simulate: 0 photos, 1 video — the video-only scenario
+        delivery = _MediaDelivery(
+            inline_photo_urls=[],
+            link_lines=["  🎥 Видео: https://example.com/video.mp4"],
+            photo_count=0,
+            video_count=1,
+        )
+
+        payload = {
+            "data": {
+                "cargo_description": "Коробки",
+                "photo_count": 0,  # No photos — old code would skip media fetch!
+                "custom": {},
+            }
+        }
+
+        with patch("app.infra.notification_channels.get_notification_channel", return_value=mock_channel):
+            with patch(
+                "app.infra.notification_service._get_media_for_lead",
+                new_callable=AsyncMock,
+                return_value=delivery,
+            ) as mock_fetch:
+                result = await notify_operator("lead1", "+79990001122", payload, tenant_id="test_t")
+
+        assert result is True
+        # _get_media_for_lead was called even though photo_count was 0
+        mock_fetch.assert_called_once()
+        # Video link appears in the notification body
+        assert "🎥 Видео" in captured_body["body"]
+        assert "https://example.com/video.mp4" in captured_body["body"]
+
+    @pytest.mark.asyncio
+    async def test_photo_and_video_counts_injected(self, monkeypatch):
+        """notify_operator injects accurate photo/video counts from delivery into payload."""
+        from app.infra.notification_service import notify_operator, _MediaDelivery
+
+        monkeypatch.setattr("app.config.settings.operator_notifications_enabled", True)
+        monkeypatch.setattr("app.config.settings.operator_notification_channel", "whatsapp")
+        monkeypatch.setattr("app.config.settings.operator_whatsapp", "+79990001122")
+        monkeypatch.setattr("app.config.settings.tenant_id", "test_t")
+
+        captured_body = {}
+
+        async def mock_send(notification):
+            captured_body["body"] = notification.body
+            return True
+
+        mock_channel = MagicMock()
+        mock_channel.name = "whatsapp"
+        mock_channel.send = mock_send
+
+        # 1 photo + 1 video — previously showed "Photo: 2"
+        delivery = _MediaDelivery(
+            inline_photo_urls=["https://example.com/photo.jpg"],
+            link_lines=["  🎥 Видео: https://example.com/video.mp4"],
+            photo_count=1,
+            video_count=1,
+        )
+
+        payload = {
+            "data": {
+                "cargo_description": "Мебель",
+                "photo_count": 2,  # Inaccurate — handler counted both as photos
+                "custom": {},
+            }
+        }
+
+        with patch("app.infra.notification_channels.get_notification_channel", return_value=mock_channel):
+            with patch(
+                "app.infra.notification_service._get_media_for_lead",
+                new_callable=AsyncMock,
+                return_value=delivery,
+            ):
+                await notify_operator("lead1", "+79990001122", payload, tenant_id="test_t")
+
+        body = captured_body["body"]
+        # Should show "Фото: 1" not "Фото: 2"
+        assert "📷 Фото: 1 шт." in body
+        # Should show video count
+        assert "🎥 Видео: 1 шт." in body
